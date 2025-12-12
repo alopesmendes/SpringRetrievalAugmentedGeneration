@@ -2,23 +2,21 @@ plugins {
     kotlin("jvm")
 }
 
-group = "com.ailtontech"
-version = "0.0.1-SNAPSHOT"
-
-repositories {
-    mavenCentral()
-}
+description = "Application layer - Use cases and ports with zero framework dependencies"
 
 dependencies {
+    // Internal module dependencies
+    implementation(project(":domain"))
+
+    // Kotlin standard library
+    implementation(kotlin("stdlib"))
+
+    // Testing
     testImplementation(kotlin("test"))
-}
+    testImplementation(kotlin("test-junit5"))
+    testImplementation("org.mockito.kotlin:mockito-kotlin:6.1.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-tasks.test {
-    useJUnitPlatform()
-}
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
+    // Test domain module as well
+    testImplementation(project(":domain"))
 }
