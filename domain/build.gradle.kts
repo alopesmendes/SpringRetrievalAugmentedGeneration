@@ -2,20 +2,14 @@ plugins {
     kotlin("jvm")
 }
 
-group = "com.ailtontech"
-version = "0.0.1-SNAPSHOT"
-
-repositories {
-    mavenCentral()
-}
+description = "Domain layer - Pure Kotlin business logic with zero framework dependencies"
 
 dependencies {
-    testImplementation(kotlin("test"))
-}
+    // Kotlin standard library only - NO SPRING, NO MONGODB, NO FRAMEWORK DEPENDENCIES
+    implementation(kotlin("stdlib"))
 
-tasks.test {
-    useJUnitPlatform()
-}
-kotlin {
-    jvmToolchain(23)
+    // Testing - Pure Kotlin tests
+    testImplementation(kotlin("test"))
+    testImplementation(kotlin("test-junit5"))
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
