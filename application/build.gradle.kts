@@ -14,7 +14,7 @@ dependencies {
     // Testing
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit5"))
-    testImplementation("org.mockito.kotlin:mockito-kotlin:6.1.0")
+    testImplementation("io.mockk:mockk:1.13.12")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // Test domain module as well

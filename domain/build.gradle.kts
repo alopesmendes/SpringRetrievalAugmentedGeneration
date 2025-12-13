@@ -11,5 +11,6 @@ dependencies {
     // Testing - Pure Kotlin tests
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit5"))
+    testImplementation("io.mockk:mockk:1.13.12")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
