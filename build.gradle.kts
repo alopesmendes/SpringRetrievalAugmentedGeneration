@@ -1,9 +1,12 @@
 import io.gitlab.arturbosch.detekt.Detekt
+import kotlinx.kover.gradle.plugin.dsl.AggregationType
+import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
 
 plugins {
     kotlin("jvm") version "2.0.21" apply false
     id("org.jlleitschuh.gradle.ktlint") version "13.1.0"
     id("io.gitlab.arturbosch.detekt") version "1.23.8"
+    id("org.jetbrains.kotlinx.kover") version "0.8.3"
 }
 
 // ============================================================================
@@ -38,6 +41,32 @@ detekt {
     autoCorrect = false
 }
 
+// ============================================================================
+// Kover Configuration
+// ============================================================================
+kover {
+    reports {
+        // Global report combining all modules
+        total {
+            xml { onCheck = true }
+            html { onCheck = true }
+
+            verify {
+                onCheck = true
+                description = "Global Line Coverage"
+
+                rule {
+                    bound {
+                        minValue = 80
+                        coverageUnits = CoverageUnit.LINE
+                        aggregationForGroup = AggregationType.COVERED_PERCENTAGE
+                    }
+                }
+            }
+        }
+    }
+}
+
 allprojects {
     group = "com.ailtontech"
     version = "0.0.1-SNAPSHOT"
@@ -54,6 +83,7 @@ subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
     apply(plugin = "io.gitlab.arturbosch.detekt")
+    apply(plugin = "org.jetbrains.kotlinx.kover")
 
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         compilerOptions {

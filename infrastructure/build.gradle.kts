@@ -42,7 +42,9 @@ dependencies {
     }
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit5"))
-    testImplementation("org.mockito.kotlin:mockito-kotlin:6.1.0")
+    // SpringMockK: Allows using @MockkBean inside Spring Contexts
+    testImplementation("com.ninja-squad:springmockk:4.0.2")
+
     testImplementation("org.springframework.security:spring-security-test")
 
     // Testcontainers for MongoDB
@@ -51,6 +53,16 @@ dependencies {
 
     // ArchUnit for architecture testing
     testImplementation("com.tngtech.archunit:archunit-junit5:1.4.1")
+
+    // --- E2E Testing (Cucumber + JUnit 5) ---
+    val cucumberVersion = "7.15.0"
+    testImplementation("io.cucumber:cucumber-java:$cucumberVersion")
+    testImplementation("io.cucumber:cucumber-spring:$cucumberVersion")
+    testImplementation("io.cucumber:cucumber-kotlin:$cucumberVersion")
+    testImplementation("io.cucumber:cucumber-junit-platform-engine:$cucumberVersion")
+
+    // To run Cucumber as a JUnit 5 Suite
+    testImplementation("org.junit.platform:junit-platform-suite:1.10.1")
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
