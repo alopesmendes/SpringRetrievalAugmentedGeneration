@@ -1,0 +1,60 @@
+# =============================================================================
+# Lint Workflow - Code Style & Static Analysis
+# =============================================================================
+# Runs the Gradle lint task (ktlint + detekt)
+# Triggers: PR to master/develop/staging, manual dispatch
+# =============================================================================
+
+name: Lint
+
+on:
+  pull_request:
+    branches: [master, develop, staging]
+    paths:
+      - '**.kt'
+      - '**.kts'
+      - 'config/detekt/**'
+      - '.editorconfig'
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: lint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: 'temurin'
+
+jobs:
+  lint:
+    name: 🔍 Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      - name: 🐘 Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: 🔍 Run lint
+        run: ./gradlew lint --continue
+
+      - name: 📊 Upload lint reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lint-reports
+          path: |
+            **/build/reports/ktlint/
+            **/build/reports/detekt/
+          retention-days: 14
