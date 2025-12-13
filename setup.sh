@@ -108,6 +108,12 @@ echo -e "${YELLOW}Setting up scripts...${NC}"
 chmod +x tools/scripts/*.sh 2>/dev/null || true
 echo -e "${GREEN}✓ Scripts are executable${NC}"
 
+# Launch install scripts
+echo ""
+echo -e "${YELLOW}Launching install scripts...${NC}"
+./tools/scripts/install*.sh 2>/dev/null || true
+echo -e "${GREEN}✓ Scripts are executable${NC}"
+
 # Build project to download dependencies
 echo ""
 echo -e "${YELLOW}Downloading dependencies...${NC}"
