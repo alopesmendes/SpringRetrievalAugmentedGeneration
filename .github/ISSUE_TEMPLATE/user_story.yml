@@ -1,0 +1,86 @@
+name: "📖 User Story"
+description: "Create a user story for a new feature or enhancement"
+title: "[USER STORY] "
+labels: ["user-story"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## User Story
+
+  - type: input
+    id: created-by
+    attributes:
+      label: Created by
+      placeholder: "@username"
+    validations:
+      required: true
+
+  - type: input
+    id: assigned-to
+    attributes:
+      label: Assigned to
+      placeholder: "@username or Unassigned"
+    validations:
+      required: false
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: "As a [type of user], I want [goal] so that [benefit]"
+      placeholder: "As a user, I want to upload an image so that I can retrieve information from it"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: "Provide additional context about this user story"
+      placeholder: "Detailed description of the user story..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: "List the criteria that must be met for this story to be considered complete"
+      value: |
+        - [ ] Criteria 1
+        - [ ] Criteria 2
+        - [ ] Criteria 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: definition-of-done
+    attributes:
+      label: Definition of Done
+      description: "Standard checklist for completion"
+      value: |
+        - [ ] Respect the guidelines of the ticket
+        - [ ] Documentation is up to date
+        - [ ] Tests are valid and passing (unit, integration, e2e)
+        - [ ] Can be deployed without regressions
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical-notes
+    attributes:
+      label: Technical Notes
+      description: "Any technical considerations, constraints, or implementation hints"
+      placeholder: "Technical implementation details..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: "Any other context, screenshots, or references"
+      placeholder: "Additional information..."
+    validations:
+      required: false

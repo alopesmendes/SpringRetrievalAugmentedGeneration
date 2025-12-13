@@ -1,0 +1,59 @@
+name: "🚀 Feature / Epic"
+description: "Propose a new feature or epic"
+title: "[FEATURE] "
+labels: ["feature", "epic"]
+body:
+  - type: input
+    id: created-by
+    attributes:
+      label: Created by
+      placeholder: "@username"
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: "What is the main objective of this feature/epic?"
+      placeholder: "The goal of this feature is to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: "Provide a detailed description of the feature/epic"
+      placeholder: "Detailed description of what this feature will accomplish..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-stories
+    attributes:
+      label: User Stories
+      description: "List the user stories that are part of this epic (if applicable)"
+      placeholder: |
+        - [ ] #issue_number - User story title
+        - [ ] #issue_number - User story title
+    validations:
+      required: false
+
+  - type: textarea
+    id: success-metrics
+    attributes:
+      label: Success Metrics
+      description: "How will we measure the success of this feature?"
+      placeholder: "Define measurable outcomes..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: "Any other context, mockups, references, or related issues"
+      placeholder: "Additional information..."
+    validations:
+      required: false

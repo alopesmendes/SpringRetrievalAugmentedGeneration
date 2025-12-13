@@ -1,0 +1,97 @@
+name: "⚙️ Enabler"
+description: "Technical enabler for infrastructure, architecture, or tooling"
+title: "[ENABLER] "
+labels: ["enabler", "technical"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Enabler
+
+  - type: input
+    id: created-by
+    attributes:
+      label: Created by
+      placeholder: "@username"
+    validations:
+      required: true
+
+  - type: input
+    id: assigned-to
+    attributes:
+      label: Assigned to
+      placeholder: "@username or Unassigned"
+    validations:
+      required: false
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: "What is the technical objective of this enabler?"
+      placeholder: "The goal of this enabler is to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: "Provide a detailed description of the technical work"
+      placeholder: "Detailed description of the enabler..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical-notes
+    attributes:
+      label: Technical Notes
+      description: "Implementation details, architectural considerations, or technical constraints"
+      placeholder: |
+        - Architecture impact:
+        - Performance considerations:
+        - Security implications:
+        - Migration requirements:
+    validations:
+      required: true
+
+  - type: textarea
+    id: libraries-dependencies
+    attributes:
+      label: Libraries / Dependencies
+      description: "List any new libraries or dependencies required"
+      placeholder: |
+        | Library | Version | Purpose |
+        |---------|---------|---------|
+        | example-lib | 1.0.0 | Description |
+    validations:
+      required: false
+
+  - type: textarea
+    id: definition-of-done
+    attributes:
+      label: Definition of Done
+      description: "Standard checklist for completion"
+      value: |
+        - [ ] Respect the guidelines of the ticket
+        - [ ] Documentation is up to date
+        - [ ] Tests are valid and passing (unit, integration, e2e)
+        - [ ] Can be deployed without regressions
+    validations:
+      required: true
+
+  - type: dropdown
+    id: enabler-type
+    attributes:
+      label: Enabler Type
+      options:
+        - Infrastructure
+        - Architecture
+        - Tooling
+        - DevOps
+        - Security
+        - Performance
+        - Refactoring
+        - Other
+    validations:
+      required: true
