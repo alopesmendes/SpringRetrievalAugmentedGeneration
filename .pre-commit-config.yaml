@@ -1,0 +1,50 @@
+# Pre-commit configuration for Image RAG Kotlin project
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+default_stages: [pre-commit]
+fail_fast: false
+
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Local hooks for Kotlin linting
+  - repo: local
+    hooks:
+      # ktlint - Code style and formatting
+      - id: ktlint-check
+        name: ktlint check
+        description: Runs ktlint on staged .kt and .kts files
+        language: script
+        entry: tools/scripts/ktlint-check.sh
+        files: \.(kt|kts)$
+        pass_filenames: true
+
+      # ktlint format (optional - auto-fix)
+      - id: ktlint-format
+        name: ktlint format
+        description: Auto-formats staged .kt and .kts files with ktlint
+        language: script
+        entry: tools/scripts/ktlint-format.sh
+        files: \.(kt|kts)$
+        pass_filenames: true
+
+      # detekt - Static code analysis
+      - id: detekt
+        name: detekt check
+        description: Runs detekt static analysis on staged .kt files
+        language: script
+        entry: tools/scripts/detekt-check.sh
+        files: \.kt$
+        pass_filenames: true
