@@ -1,0 +1,103 @@
+name: "🐛 Bug Report"
+description: "Report a bug or unexpected behavior"
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: What is the issue?
+      description: "Provide a clear and concise description of the bug"
+      placeholder: "Describe what went wrong..."
+    validations:
+      required: true
+
+  - type: input
+    id: discovered-date
+    attributes:
+      label: When was it discovered?
+      description: "Date when the bug was first noticed"
+      placeholder: "YYYY-MM-DD"
+    validations:
+      required: true
+
+  - type: input
+    id: affected-version
+    attributes:
+      label: Which version is affected?
+      description: "Application version where the bug occurs"
+      placeholder: "e.g., 1.0.0, main branch, commit hash"
+    validations:
+      required: true
+
+  - type: input
+    id: assigned-to
+    attributes:
+      label: Assigned to
+      placeholder: "@username or Unassigned"
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: "How can we reproduce this issue?"
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: "What should happen?"
+      placeholder: "Describe the expected behavior..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: "What actually happens?"
+      placeholder: "Describe the actual behavior..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Critical (System down, data loss)
+        - High (Major feature broken)
+        - Medium (Feature impaired)
+        - Low (Minor inconvenience)
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs-screenshots
+    attributes:
+      label: Logs / Screenshots
+      description: "Add any relevant logs, error messages, or screenshots"
+      placeholder: "Paste logs or attach screenshots..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: "Provide details about the environment"
+      placeholder: |
+        - OS: 
+        - Java version: 
+        - Kotlin version: 
+        - Spring Boot version: 
+    validations:
+      required: false
