@@ -1,6 +1,6 @@
 plugins {
     kotlin("jvm")
-    kotlin("plugin.spring") version "2.1.21"
+    kotlin("plugin.spring") version "2.0.21"
     id("org.springframework.boot") version "3.5.8"
     id("io.spring.dependency-management") version "1.1.7"
 }
@@ -8,13 +8,11 @@ plugins {
 description = "Infrastructure layer - Spring Boot adapters and framework integrations"
 
 // For spring AI, for now since there's no key will comment it
-/*
-dependencyManagement {
-    imports {
-        mavenBom("org.springframework.ai:spring-ai-bom:1.0.2")
-    }
-}
-*/
+// dependencyManagement {
+//    imports {
+//        mavenBom("org.springframework.ai:spring-ai-bom:1.0.2")
+//    }
+// }
 
 dependencies {
     // Internal module dependencies
@@ -48,8 +46,8 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
 
     // Testcontainers for MongoDB
-    testImplementation("org.testcontainers:mongodb:2.0.2")
-    testImplementation("org.testcontainers:junit-jupiter:2.0.2")
+    // testImplementation("org.testcontainers:mongodb:2.0.2")
+    // testImplementation("org.testcontainers:junit-jupiter:2.0.2")
 
     // ArchUnit for architecture testing
     testImplementation("com.tngtech.archunit:archunit-junit5:1.4.1")
@@ -58,5 +56,5 @@ dependencies {
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
-    mainClass.set("com.ailtontech.imagerag.ImageRagApplicationKt")
+    mainClass.set("com.ailtontech.ImageRetrievalAugmentedGenerationKt")
 }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Detekt Baseline File -->
+<!-- This file contains known issues that will be ignored by detekt -->
+<!-- Generate a new baseline with: ./gradlew detektGenerateBaseline -->
+<!-- See: https://detekt.dev/docs/introduction/baseline/ -->
+<SmellBaseline>
+    <ManuallySuppressedIssues/>
+    <CurrentIssues/>
+</SmellBaseline>

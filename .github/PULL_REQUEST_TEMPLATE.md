@@ -29,12 +29,6 @@ Closes #issue_number
 
 [Describe how this change affects the end user]
 
-## Changes
-
-- [ ] 📚 Documentation
-- [ ] 🔧 Fix code
-- [ ] ✨ New features
-
 ## Checklist
 
 - [ ] My code follows the project guidelines
