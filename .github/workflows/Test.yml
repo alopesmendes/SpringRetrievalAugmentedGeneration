@@ -11,6 +11,10 @@
 name: Test
 
 on:
+  workflow_run:
+    workflows: [ Build ]
+    types: [ completed ]
+    branches: [ master, develop, staging ]
   pull_request:
     branches: [master, develop, staging]
     paths:

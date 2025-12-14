@@ -65,6 +65,13 @@ kover {
             }
         }
     }
+
+    // Exclude from coverage measurement
+    currentProject {
+        sources {
+            excludedSourceSets.addAll("integrationTest", "e2eTest")
+        }
+    }
 }
 
 allprojects {
