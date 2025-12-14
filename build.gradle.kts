@@ -163,3 +163,24 @@ tasks.register("format") {
     description = "Format code with ktlint"
     dependsOn("ktlintFormat")
 }
+
+// ============================================================================
+// Report Merging (Fix for GitHub Code Scanning)
+// ============================================================================
+tasks.register<io.gitlab.arturbosch.detekt.report.ReportMergeTask>("mergeDetektSarif") {
+    group = "verification"
+    description = "Merges Detekt SARIF reports from all submodules into one file."
+
+    // 1. Define where the merged file will be saved
+    output.set(layout.buildDirectory.file("reports/detekt/merged.sarif"))
+
+    // 2. Collect the 'detekt.sarif' file from every subproject
+    input.from(
+        subprojects.map { project ->
+            project.layout.buildDirectory.file("reports/detekt/detekt.sarif")
+        },
+    )
+
+    // Ensure this task runs after the subprojects have generated their reports
+    dependsOn(subprojects.map { it.tasks.named("detekt") })
+}
