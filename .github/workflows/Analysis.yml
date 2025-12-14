@@ -1,0 +1,113 @@
+# =============================================================================
+# Analysis Workflow - Security & Code Quality Scanning
+# =============================================================================
+# Runs deep static analysis using CodeQL (Security) and Detekt (Code Smells).
+# Results are uploaded to GitHub's Security > Code Scanning tab.
+# Triggers: Push, PR, and Weekly Schedule
+# =============================================================================
+
+name: Analysis
+
+on:
+  push:
+    branches: [ master, develop, staging ]
+  pull_request:
+    branches: [ master, develop, staging ]
+  schedule:
+    - cron: '30 1 * * 0' # Run at 01:30 every Sunday
+  workflow_dispatch:
+
+concurrency:
+  group: analysis-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write # Required to upload SARIF results
+
+env:
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: 'temurin'
+
+jobs:
+  # ===========================================================================
+  # CodeQL - Security Vulnerability Scanning
+  # ===========================================================================
+  analyze-codeql:
+    name: 🛡️ CodeQL Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      - name: 🐘 Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # Initialize CodeQL tools for scanning.
+      - name: 🔍 Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: java # 'java' includes Kotlin support
+          queries: security-and-quality # Uses extended query set for better coverage
+
+      # Autobuild attempts to build the project automatically.
+      # For complex Gradle projects, manual build command is often more reliable.
+      - name: 🔨 Build for Analysis
+        run: ./gradlew assemble --no-daemon
+
+      - name: 📊 Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:java"
+
+  # ===========================================================================
+  # Detekt - Static Analysis & Code Smells (SARIF)
+  # ===========================================================================
+  # ===========================================================================
+  # Detekt - Static Analysis & Code Smells (SARIF)
+  # ===========================================================================
+  analyze-detekt:
+    name: 🔍 Detekt Code Smells
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write # Required for uploading results
+      actions: read
+      contents: read
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      - name: 🐘 Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # Run detekt on all modules AND the merge task
+      - name: 🔍 Run Detekt & Merge Reports
+        run: ./gradlew detekt mergeDetektSarif --continue
+
+      # Upload ONLY the single merged file
+      - name: 📤 Upload Detekt Results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: success() || failure()
+        with:
+          sarif_file: build/reports/detekt/merged.sarif
+          category: detekt
