@@ -1,0 +1,153 @@
+# =============================================================================
+# Security Workflow - Vulnerability Scanning & Analysis
+# =============================================================================
+# Performs security analysis on dependencies using Trivy.
+# Scans each module individually and the global project context.
+# Fails the build if "CRITICAL" or "HIGH" vulnerabilities are found.
+# =============================================================================
+
+name: Security
+
+on:
+  push:
+    branches: [ master, develop, staging ]
+  pull_request:
+    branches: [ master, develop, staging ]
+  schedule:
+    - cron: '30 2 * * *' # Run nightly at 2:30 AM
+
+concurrency:
+  group: security-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write # Required to upload SARIF results to GitHub Security tab
+  actions: read
+
+jobs:
+  # ===========================================================================
+  # Per-Module Scan - Analyze vulnerabilities in specific modules
+  # ===========================================================================
+  module-scan:
+    name: 🛡️ Scan - ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [domain, application, infrastructure]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛡️ Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '${{ matrix.module }}'
+          format: 'table'
+          exit-code: '1' # Fail the job if vulnerabilities are found
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: 📄 Generate Report (SARIF)
+        if: always() # Generate report even if the previous step failed
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '${{ matrix.module }}'
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.module }}.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: 📤 Upload Scan Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report-${{ matrix.module }}
+          path: trivy-results-${{ matrix.module }}.sarif
+          retention-days: 14
+
+  # ===========================================================================
+  # Global Scan - Analyze the entire project context
+  # ===========================================================================
+  global-scan:
+    name: 🛡️ Scan - Global
+    runs-on: ubuntu-latest
+    needs: [module-scan] # Optional: Run in parallel by removing this line
+    if: always()
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛡️ Run Trivy on Root Project
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: 📄 Generate Global Report (SARIF)
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results-global.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: 📤 Upload to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results-global.sarif'
+          category: 'trivy-global'
+
+      - name: 📤 Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report-global
+          path: trivy-results-global.sarif
+          retention-days: 30
+
+  # ===========================================================================
+  # Security Summary - PR Comment
+  # ===========================================================================
+  security-summary:
+    name: 📋 Security Summary
+    runs-on: ubuntu-latest
+    needs: [module-scan, global-scan]
+    if: always()
+
+    steps:
+      - name: 📝 Generate Summary
+        run: |
+          echo "## 🛡️ Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "| Scope | Status | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Check Module Statuses
+          DOM_STATUS="${{ needs.module-scan.result == 'success' && '✅ Clean' || '❌ Vulnerabilities Found' }}"
+          APP_STATUS="${{ needs.module-scan.result == 'success' && '✅ Clean' || '❌ Vulnerabilities Found' }}"
+          INF_STATUS="${{ needs.module-scan.result == 'success' && '✅ Clean' || '❌ Vulnerabilities Found' }}"
+
+          # Check Global Status
+          GLOB_STATUS="${{ needs.global-scan.result == 'success' && '✅ Clean' || '❌ Vulnerabilities Found' }}"
+
+          echo "| **Domain** | ${{ needs.module-scan.result == 'success' && 'Pass' || 'Fail' }} | $DOM_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Application** | ${{ needs.module-scan.result == 'success' && 'Pass' || 'Fail' }} | $APP_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Infrastructure** | ${{ needs.module-scan.result == 'success' && 'Pass' || 'Fail' }} | $INF_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Global** | ${{ needs.global-scan.result == 'success' && 'Pass' || 'Fail' }} | $GLOB_STATUS |" >> $GITHUB_STEP_SUMMARY
