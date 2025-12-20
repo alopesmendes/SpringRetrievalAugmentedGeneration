@@ -6,7 +6,7 @@ plugins {
     kotlin("jvm") version "2.0.21" apply false
     id("org.jlleitschuh.gradle.ktlint") version "13.1.0"
     id("io.gitlab.arturbosch.detekt") version "1.23.8"
-    id("org.jetbrains.kotlinx.kover") version "0.8.3"
+    id("org.jetbrains.kotlinx.kover") version "0.9.4"
 }
 
 // ============================================================================
