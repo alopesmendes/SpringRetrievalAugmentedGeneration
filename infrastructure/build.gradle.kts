@@ -103,7 +103,7 @@ dependencies {
     // -------------------------------------------------------------------------
     // E2E Testing (Cucumber + JUnit 5)
     // -------------------------------------------------------------------------
-    val cucumberVersion = "7.15.0"
+    val cucumberVersion = "7.33.0"
     "e2eTestImplementation"("io.cucumber:cucumber-java:$cucumberVersion")
     "e2eTestImplementation"("io.cucumber:cucumber-spring:$cucumberVersion")
     "e2eTestImplementation"("io.cucumber:cucumber-junit-platform-engine:$cucumberVersion")
