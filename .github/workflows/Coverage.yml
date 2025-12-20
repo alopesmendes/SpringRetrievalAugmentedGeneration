@@ -1,9 +1,9 @@
 # =============================================================================
 # Coverage Workflow - Code Coverage Generation & Verification
 # =============================================================================
-# Generates coverage reports per module using Kover, aggregates results,
+# Generates coverage reports for all modules using Kover in a single job,
 # enforces 80% minimum global coverage, and uploads to Codecov.
-# Triggers: After Test workflow completes, manual dispatch
+# Triggers: After Test workflow completes successfully, manual dispatch
 # =============================================================================
 
 name: Coverage
@@ -13,16 +13,10 @@ on:
     workflows: [Test]
     types: [completed]
     branches: [master, develop, staging]
-  pull_request:
-    branches: [master, develop, staging]
-    paths:
-      - '**.kt'
-      - '**.kts'
-      - 'gradle/**'
   workflow_dispatch:
 
 concurrency:
-  group: coverage-${{ github.event.pull_request.number || github.event.workflow_run.head_branch || github.ref }}
+  group: coverage-${{ github.event.workflow_run.head_branch || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -37,66 +31,16 @@ env:
 
 jobs:
   # ===========================================================================
-  # Per-Module Coverage - Generate coverage for each module
+  # Coverage - Generate, verify, and report coverage for all modules
   # ===========================================================================
-  module-coverage:
-    name: 📊 Coverage - ${{ matrix.module }}
+  coverage:
+    name: 📊 Coverage
     runs-on: ubuntu-latest
-    # Skip if Test workflow failed (when triggered by workflow_run)
+    # Only run if Test workflow succeeded
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        module: [domain, application, infrastructure]
-
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-        with:
-          # For workflow_run, checkout the commit that triggered the Test workflow
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-
-      - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: ${{ env.JAVA_DISTRIBUTION }}
-
-      - name: 🐘 Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-
-      - name: 🧪 Run tests with coverage for ${{ matrix.module }}
-        run: ./gradlew :${{ matrix.module }}:test :${{ matrix.module }}:koverXmlReport :${{ matrix.module }}:koverHtmlReport
-
-      - name: 📊 Upload module coverage report (XML)
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-xml-${{ matrix.module }}
-          path: ${{ matrix.module }}/build/reports/kover/report.xml
-          retention-days: 30
-          if-no-files-found: warn
-
-      - name: 📊 Upload module coverage report (HTML)
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-html-${{ matrix.module }}
-          path: ${{ matrix.module }}/build/reports/kover/html/
-          retention-days: 14
-          if-no-files-found: warn
-
-  # ===========================================================================
-  # Global Coverage Verification - Enforce 80% minimum
-  # ===========================================================================
-  verify-coverage:
-    name: ✅ Verify Global Coverage
-    runs-on: ubuntu-latest
-    needs: [module-coverage]
 
     outputs:
-      coverage-percentage: ${{ steps.coverage-check.outputs.coverage }}
-      coverage-passed: ${{ steps.coverage-check.outputs.passed }}
+      coverage-passed: ${{ steps.verify.outputs.passed }}
 
     steps:
       - name: 📥 Checkout code
@@ -115,179 +59,68 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: 🧪 Run all tests with global coverage
-        run: ./gradlew test koverXmlReport koverHtmlReport
-
-      - name: ✅ Verify minimum coverage (80%)
-        id: coverage-check
+      - name: ✅ Generate and verify coverage (80% threshold)
+        id: verify
         run: |
-          # Run koverVerify and capture result
-          if ./gradlew koverVerify; then
+          if ./gradlew verifyCoverage; then
             echo "passed=true" >> $GITHUB_OUTPUT
-            echo "✅ Coverage verification passed!"
           else
             echo "passed=false" >> $GITHUB_OUTPUT
-            echo "❌ Coverage verification failed - below 80% threshold"
             exit 1
           fi
 
-      - name: 📊 Upload global coverage report (XML)
+      - name: 📦 Assemble coverage reports
+        if: always()
+        run: ./gradlew assembleCoverageReports
+
+      - name: 📋 Print coverage summary
+        if: always()
+        run: ./gradlew printCoverageSummary || true
+
+      - name: 📊 Upload coverage reports (XML)
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: coverage-xml-global
-          path: build/reports/kover/report.xml
+          name: coverage-xml
+          path: build/coverage-reports/xml/
           retention-days: 30
           if-no-files-found: warn
 
-      - name: 📊 Upload global coverage report (HTML)
+      - name: 📊 Upload coverage reports (HTML)
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: coverage-html-global
-          path: build/reports/kover/html/
+          name: coverage-html
+          path: build/coverage-reports/html/
           retention-days: 14
           if-no-files-found: warn
 
-  # ===========================================================================
-  # Coverage Summary - Generate PR comment and upload to Codecov
-  # ===========================================================================
-  coverage-summary:
-    name: 📋 Coverage Summary
-    runs-on: ubuntu-latest
-    needs: [module-coverage, verify-coverage]
-    if: always() && needs.module-coverage.result == 'success'
-
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-
-      - name: 📥 Download all coverage reports
-        uses: actions/download-artifact@v4
-        with:
-          pattern: 'coverage-xml-*'
-          path: coverage-reports
-          merge-multiple: false
-
-      # UPDATED STEP: Using v5 with simplified configuration
-      - name: 📊 Upload coverage reports to Codecov
+      - name: 📈 Upload to Codecov
         uses: codecov/codecov-action@v5
+        if: always()
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: |
-            coverage-reports/coverage-xml-domain/report.xml,
-            coverage-reports/coverage-xml-application/report.xml,
-            coverage-reports/coverage-xml-infrastructure/report.xml,
-            coverage-reports/coverage-xml-global/report.xml
+          files: build/coverage-reports/xml/global-coverage.xml
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
           verbose: true
 
-      - name: 📝 Generate coverage summary
-        id: coverage-summary
+      - name: 📝 Generate workflow summary
+        if: always()
         run: |
           echo "## 📊 Code Coverage Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Check verification status
-          if [ "${{ needs.verify-coverage.outputs.coverage-passed }}" == "true" ]; then
+          if [ "${{ steps.verify.outputs.passed }}" == "true" ]; then
             echo "✅ **Global coverage meets the 80% minimum threshold**" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Global coverage is below the 80% minimum threshold**" >> $GITHUB_STEP_SUMMARY
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Module Coverage Reports" >> $GITHUB_STEP_SUMMARY
+          echo "### Coverage Reports" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Module | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Domain | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
-          echo "| Application | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
-          echo "| Infrastructure | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Global** | ${{ needs.verify-coverage.outputs.coverage-passed == 'true' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "Coverage reports have been generated for all modules and uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📈 View detailed coverage on [Codecov](https://codecov.io/gh/${{ github.repository }})" >> $GITHUB_STEP_SUMMARY
-
-      - name: 💬 Add PR comment with coverage
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const verifyPassed = '${{ needs.verify-coverage.outputs.coverage-passed }}' === 'true';
-
-            const body = `## 📊 Code Coverage Report
-
-            ${verifyPassed ? '✅ **Global coverage meets the 80% minimum threshold**' : '❌ **Global coverage is below the 80% minimum threshold**'}
-
-            ### Module Coverage
-            | Module | Status |
-            |--------|--------|
-            | Domain | ✅ Generated |
-            | Application | ✅ Generated |
-            | Infrastructure | ✅ Generated |
-            | **Global** | ${verifyPassed ? '✅ Passed' : '❌ Failed'} |
-
-            📈 View detailed coverage on [Codecov](https://codecov.io/gh/${{ github.repository }})
-
-            ---
-            <sub>Coverage reports are available as workflow artifacts for 30 days.</sub>`;
-
-            // Find existing comment
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            const botComment = comments.find(comment =>
-              comment.user.type === 'Bot' &&
-              comment.body.includes('📊 Code Coverage Report')
-            );
-
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: body
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: body
-              });
-            }
-
-  # ===========================================================================
-  # Store Coverage for Code Analysis - Artifacts for CodeQL
-  # ===========================================================================
-  store-for-analysis:
-    name: 📦 Store for Code Analysis
-    runs-on: ubuntu-latest
-    needs: [verify-coverage]
-    if: always() && needs.verify-coverage.result == 'success'
-
-    steps:
-      - name: 📥 Download global coverage XML
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-xml-global
-          path: coverage-for-analysis
-
-      - name: 📥 Download module coverage XMLs
-        uses: actions/download-artifact@v4
-        with:
-          pattern: 'coverage-xml-*'
-          path: coverage-for-analysis/modules
-          merge-multiple: false
-
-      - name: 📦 Upload coverage for CodeQL analysis
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-for-codeql
-          path: coverage-for-analysis/
-          retention-days: 90
-          if-no-files-found: warn

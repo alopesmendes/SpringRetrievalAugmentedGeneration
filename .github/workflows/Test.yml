@@ -11,14 +11,11 @@
 name: Test
 
 on:
-  pull_request:
+  workflow_run:
+    workflows: [Build]
+    types: [completed]
     branches: [master, develop, staging]
-    paths:
-      - '**.kt'
-      - '**.kts'
-      - 'gradle/**'
   workflow_dispatch:
-  workflow_call:
 
 concurrency:
   group: test-${{ github.event.pull_request.number || github.ref }}
