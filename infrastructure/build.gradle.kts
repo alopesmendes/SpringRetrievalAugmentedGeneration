@@ -108,7 +108,7 @@ dependencies {
     "e2eTestImplementation"("io.cucumber:cucumber-spring:$cucumberVersion")
     "e2eTestImplementation"("io.cucumber:cucumber-junit-platform-engine:$cucumberVersion")
     // To run Cucumber as a JUnit 5 Suite
-    "e2eTestImplementation"("org.junit.platform:junit-platform-suite:1.10.1")
+    "e2eTestImplementation"("org.junit.platform:junit-platform-suite:1.14.1")
 }
 
 // =============================================================================
