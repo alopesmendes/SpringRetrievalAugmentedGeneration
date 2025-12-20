@@ -1,20 +1,16 @@
 # =============================================================================
 # Test Workflow - Unit, Integration & E2E Tests
 # =============================================================================
-# Runs tests in parallel for faster execution
-# - Unit tests: domain and application modules
-# - Integration tests: infrastructure module
-# - E2E tests: full application workflows
-# Triggers: PR to main/develop, manual dispatch
+# Runs tests using consolidated Gradle tasks
+# - Unit tests: Single Gradle task runs all modules dynamically via subprojects
+# - Integration tests: Infrastructure module with MongoDB
+# - E2E tests: Full application workflows with Cucumber
+# Triggers: PR to master/develop/staging, manual dispatch
 # =============================================================================
 
 name: Test
 
 on:
-  workflow_run:
-    workflows: [ Build ]
-    types: [ completed ]
-    branches: [ master, develop, staging ]
   pull_request:
     branches: [master, develop, staging]
     paths:
@@ -39,15 +35,11 @@ env:
 
 jobs:
   # ===========================================================================
-  # Unit Tests - Domain & Application modules (parallel)
+  # Unit Tests - All modules in single Gradle invocation
   # ===========================================================================
   unit-tests:
     name: 🧪 Unit Tests
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        module: [domain, application, infrastructure]
 
     steps:
       - name: 📥 Checkout code
@@ -64,27 +56,31 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: 🧪 Run ${{ matrix.module }} unit tests
-        run: ./gradlew :${{ matrix.module }}:test
+      - name: 🧪 Run unit tests for all modules
+        run: ./gradlew unitTest --continue
+
+      - name: 📦 Assemble test results
+        if: always()
+        run: ./gradlew assembleTestResults || true
 
       - name: 📊 Upload test reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: unit-test-report-${{ matrix.module }}
-          path: ${{ matrix.module }}/build/reports/tests/
+          name: unit-test-reports
+          path: '**/build/reports/tests/test/'
           retention-days: 14
 
       - name: 📝 Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: unit-test-results-${{ matrix.module }}
-          path: ${{ matrix.module }}/build/test-results/
+          name: unit-test-results
+          path: build/test-results/
           retention-days: 14
 
   # ===========================================================================
-  # Integration Tests - Infrastructure module
+  # Integration Tests - Infrastructure module with MongoDB
   # ===========================================================================
   integration-tests:
     name: 🔗 Integration Tests
@@ -116,20 +112,24 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: 🔗 Run infrastructure integration tests
+      - name: 🔗 Run integration tests
         run: |
           echo "Integration tests task configured but skipped until MongoDB is set up"
           echo "To enable, uncomment the gradle command below:"
-          # ./gradlew :infrastructure:integrationTest
+          # ./gradlew integrationTest
         env:
           SPRING_DATA_MONGODB_URI: mongodb://localhost:27017/test
+
+      - name: 📦 Assemble test results
+        if: always()
+        run: ./gradlew assembleTestResults || true
 
       - name: 📊 Upload test reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: integration-test-report
-          path: infrastructure/build/reports/tests/
+          name: integration-test-reports
+          path: infrastructure/build/reports/tests/integrationTest/
           retention-days: 14
 
       - name: 📝 Upload test results
@@ -137,7 +137,7 @@ jobs:
         if: always()
         with:
           name: integration-test-results
-          path: infrastructure/build/test-results/
+          path: build/test-results/
           retention-days: 14
 
   # ===========================================================================
@@ -163,13 +163,17 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: 🌐 Run E2E tests (Cucumber)
-        run: ./gradlew :infrastructure:e2eTest
+        run: ./gradlew e2eTest
 
-      - name: 📊 Upload Cucumber reports
+      - name: 📦 Assemble test results
+        if: always()
+        run: ./gradlew assembleTestResults || true
+
+      - name: 📊 Upload test reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: e2e-test-report
+          name: e2e-test-reports
           path: |
             infrastructure/build/reports/tests/e2eTest/
             infrastructure/build/reports/cucumber/
@@ -180,7 +184,7 @@ jobs:
         if: always()
         with:
           name: e2e-test-results
-          path: infrastructure/build/test-results/e2eTest/
+          path: build/test-results/
           retention-days: 14
 
   # ===========================================================================
@@ -199,7 +203,7 @@ jobs:
       - name: 📥 Download all test results
         uses: actions/download-artifact@v4
         with:
-          pattern: '*-test-results*'
+          pattern: '*-test-results'
           path: test-results
           merge-multiple: true
 
@@ -207,6 +211,6 @@ jobs:
         uses: dorny/test-reporter@v1
         with:
           name: Test Results
-          path: 'test-results/**/TEST-*.xml'
+          path: 'test-results/**/*.xml'
           reporter: java-junit
           fail-on-error: false

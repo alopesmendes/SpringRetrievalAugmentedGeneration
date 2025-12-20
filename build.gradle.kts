@@ -184,3 +184,115 @@ tasks.register<io.gitlab.arturbosch.detekt.report.ReportMergeTask>("mergeDetektS
     // Ensure this task runs after the subprojects have generated their reports
     dependsOn(subprojects.map { it.tasks.named("detekt") })
 }
+
+// ============================================================================
+// Test Tasks - Consolidated across all modules
+// ============================================================================
+
+// Task to run unit tests for all subprojects
+tasks.register("unitTest") {
+    group = "verification"
+    description = "Run unit tests for all modules"
+    dependsOn(subprojects.map { "${it.path}:test" })
+}
+
+// Task to run integration tests
+tasks.register("integrationTest") {
+    group = "verification"
+    description = "Run integration tests for infrastructure module"
+    dependsOn(":infrastructure:integrationTest")
+}
+
+// Task to run E2E tests
+tasks.register("e2eTest") {
+    group = "verification"
+    description = "Run E2E tests with Cucumber"
+    dependsOn(":infrastructure:e2eTest")
+}
+
+// ============================================================================
+// Test Results Assembly - Single task to collect all test results
+// ============================================================================
+
+// Task to assemble all test results into a unified directory for CI/coverage
+// Results are saved with naming pattern: {module}-{testType}-{originalFileName}.xml
+tasks.register<Copy>("assembleTestResults") {
+    group = "verification"
+    description = "Assemble all test results (unit, integration, e2e) into a unified directory"
+
+    val outputDir = layout.buildDirectory.dir("test-results")
+
+    // Collect unit test results from all subprojects
+    subprojects.forEach { subproject ->
+        from("${subproject.projectDir}/build/test-results/test") {
+            include("**/*.xml")
+            rename { fileName -> "${subproject.name}-unit-$fileName" }
+        }
+    }
+
+    // Collect integration test results from infrastructure
+    from("infrastructure/build/test-results/integrationTest") {
+        include("**/*.xml")
+        rename { fileName -> "infrastructure-integration-$fileName" }
+    }
+
+    // Collect E2E test results from infrastructure
+    from("infrastructure/build/test-results/e2eTest") {
+        include("**/*.xml")
+        rename { fileName -> "infrastructure-e2e-$fileName" }
+    }
+
+    into(outputDir)
+
+    // Flatten directory structure - all files go directly into output dir
+    eachFile {
+        relativePath = RelativePath(true, name)
+    }
+
+    includeEmptyDirs = false
+}
+
+// ============================================================================
+// Test Reports Assembly - Single task to collect all test reports
+// ============================================================================
+
+// Task to assemble all test reports into a unified directory
+tasks.register<Copy>("assembleTestReports") {
+    group = "verification"
+    description = "Assemble all test reports (unit, integration, e2e) into a unified directory"
+
+    val outputDir = layout.buildDirectory.dir("reports/tests")
+
+    // Collect unit test reports from all subprojects
+    subprojects.forEach { subproject ->
+        from("${subproject.projectDir}/build/reports/tests/test") {
+            into("${subproject.name}-unit")
+        }
+    }
+
+    // Collect integration test reports from infrastructure
+    from("infrastructure/build/reports/tests/integrationTest") {
+        into("infrastructure-integration")
+    }
+
+    // Collect E2E test reports from infrastructure
+    from("infrastructure/build/reports/tests/e2eTest") {
+        into("infrastructure-e2e")
+    }
+
+    // Collect Cucumber reports
+    from("infrastructure/build/reports/cucumber") {
+        into("infrastructure-cucumber")
+    }
+
+    into(outputDir)
+
+    includeEmptyDirs = false
+}
+
+// Combined task to assemble both results and reports
+tasks.register("assembleTestArtifacts") {
+    group = "verification"
+    description = "Assemble all test results and reports for CI"
+    dependsOn("assembleTestResults", "assembleTestReports")
+}
