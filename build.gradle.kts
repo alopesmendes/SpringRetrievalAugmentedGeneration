@@ -40,6 +40,38 @@ fun extractCoverageFromXml(xmlFile: File): Double = try {
     0.0
 }
 
+// Helper function to count vulnerabilities in SARIF report
+fun countVulnerabilitiesInSarif(sarifFile: File): Int = try {
+    val content = sarifFile.readText()
+    // Count "results" array entries in SARIF format
+    val resultsRegex = """"ruleId"\s*:\s*"[^"]+"""".toRegex()
+    resultsRegex.findAll(content).count()
+} catch (_: Exception) {
+    0
+}
+
+// Helper function to create a valid empty SARIF file
+fun createEmptySarif(): String =
+    """
+{
+  "${"$"}schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Trivy",
+          "informationUri": "https://github.com/aquasecurity/trivy",
+          "version": "0.0.0",
+          "rules": []
+        }
+      },
+      "results": []
+    }
+  ]
+}
+    """.trimIndent()
+
 // ============================================================================
 // Ktlint Configuration (Code Style & Formatting)
 // ============================================================================
@@ -456,6 +488,266 @@ tasks.register("printCoverageSummary") {
             }
         } else {
             println("  ⏭️  GLOBAL                : No coverage report found")
+        }
+
+        println("=".repeat(70))
+        println()
+    }
+}
+
+// ============================================================================
+// Security Tasks - Trivy vulnerability scanning
+// ============================================================================
+
+val securityReportsDir = layout.buildDirectory.dir("security-reports")
+val trivySeverity = "CRITICAL,HIGH"
+val trivyVulnType = "os,library"
+
+// Task to check if Trivy is installed
+tasks.register<Exec>("checkTrivy") {
+    group = "security"
+    description = "Check if Trivy is installed"
+
+    commandLine("which", "trivy")
+    isIgnoreExitValue = true
+
+    doLast {
+        if (executionResult.get().exitValue != 0) {
+            throw GradleException(
+                """
+                |Trivy is not installed. Please install it:
+                |  - macOS: brew install trivy
+                |  - Linux: https://aquasecurity.github.io/trivy/latest/getting-started/installation/
+                |  - CI: Use aquasecurity/trivy-action
+                """.trimMargin(),
+            )
+        }
+        println("✅ Trivy is installed")
+    }
+}
+
+// Task to scan a single module with Trivy (table output for console)
+subprojects.forEach { subproject ->
+    tasks.register<Exec>("securityScan${subproject.name.replaceFirstChar { it.uppercase() }}") {
+        group = "security"
+        description = "Run Trivy security scan on ${subproject.name} module"
+
+        dependsOn("checkTrivy")
+
+        workingDir = rootDir
+        commandLine(
+            "trivy",
+            "fs",
+            "--severity",
+            trivySeverity,
+            "--vuln-type",
+            trivyVulnType,
+            "--ignore-unfixed",
+            "--exit-code",
+            "0",
+            subproject.name,
+        )
+    }
+
+    // SARIF report generation for each module
+    tasks.register<Exec>("securityReport${subproject.name.replaceFirstChar { it.uppercase() }}") {
+        group = "security"
+        description = "Generate Trivy SARIF report for ${subproject.name} module"
+
+        dependsOn("checkTrivy")
+
+        val outputFile = securityReportsDir.get().file("${subproject.name}-security.sarif").asFile
+
+        workingDir = rootDir
+        commandLine(
+            "trivy",
+            "fs",
+            "--severity",
+            trivySeverity,
+            "--vuln-type",
+            trivyVulnType,
+            "--ignore-unfixed",
+            "--format",
+            "sarif",
+            "--output",
+            outputFile.absolutePath,
+            "--exit-code",
+            "0",
+            subproject.name,
+        )
+
+        doFirst {
+            outputFile.parentFile.mkdirs()
+        }
+
+        doLast {
+            // Ensure file exists even if empty (create valid empty SARIF)
+            if (!outputFile.exists() || outputFile.length() == 0L) {
+                outputFile.writeText(createEmptySarif())
+            }
+        }
+    }
+}
+
+// Task to scan the entire project (global scan)
+tasks.register<Exec>("securityScanGlobal") {
+    group = "security"
+    description = "Run Trivy security scan on the entire project"
+
+    dependsOn("checkTrivy")
+
+    workingDir = rootDir
+    commandLine(
+        "trivy",
+        "fs",
+        "--severity",
+        trivySeverity,
+        "--vuln-type",
+        trivyVulnType,
+        "--ignore-unfixed",
+        "--exit-code",
+        "0",
+        ".",
+    )
+}
+
+// Task to generate global SARIF report
+tasks.register<Exec>("securityReportGlobal") {
+    group = "security"
+    description = "Generate Trivy SARIF report for the entire project"
+
+    dependsOn("checkTrivy")
+
+    val outputFile = securityReportsDir.get().file("global-security.sarif").asFile
+
+    workingDir = rootDir
+    commandLine(
+        "trivy",
+        "fs",
+        "--severity",
+        trivySeverity,
+        "--vuln-type",
+        trivyVulnType,
+        "--ignore-unfixed",
+        "--format",
+        "sarif",
+        "--output",
+        outputFile.absolutePath,
+        "--exit-code",
+        "0",
+        ".",
+    )
+
+    doFirst {
+        outputFile.parentFile.mkdirs()
+    }
+
+    doLast {
+        // Ensure file exists and is valid SARIF even when no vulnerabilities found
+        if (!outputFile.exists() || outputFile.length() == 0L) {
+            outputFile.writeText(createEmptySarif())
+        }
+    }
+}
+
+// Task to run security scans on all modules
+tasks.register("securityScan") {
+    group = "security"
+    description = "Run Trivy security scan on all modules"
+
+    dependsOn(subprojects.map { "securityScan${it.name.replaceFirstChar { c -> c.uppercase() }}" })
+    dependsOn("securityScanGlobal")
+}
+
+// Task to generate all security reports (SARIF)
+tasks.register("securityReport") {
+    group = "security"
+    description = "Generate Trivy SARIF reports for all modules"
+
+    dependsOn(subprojects.map { "securityReport${it.name.replaceFirstChar { c -> c.uppercase() }}" })
+    dependsOn("securityReportGlobal")
+}
+
+// Task to verify security (fails if vulnerabilities found)
+tasks.register<Exec>("verifySecurity") {
+    group = "security"
+    description = "Verify no CRITICAL or HIGH vulnerabilities exist (fails build if found)"
+
+    dependsOn("checkTrivy")
+
+    workingDir = rootDir
+    commandLine(
+        "trivy",
+        "fs",
+        "--severity",
+        trivySeverity,
+        "--vuln-type",
+        trivyVulnType,
+        "--ignore-unfixed",
+        "--exit-code",
+        "1",
+        ".",
+    )
+
+    isIgnoreExitValue = true
+
+    doLast {
+        if (executionResult.get().exitValue != 0) {
+            throw GradleException("❌ Security vulnerabilities found! Check the Trivy output above.")
+        }
+        println("✅ No CRITICAL or HIGH vulnerabilities found")
+    }
+}
+
+// Task to print security summary
+tasks.register("printSecuritySummary") {
+    group = "security"
+    description = "Print security scan summary for all modules"
+
+    dependsOn("securityReport")
+
+    doLast {
+        println()
+        println("=".repeat(70))
+        println("🛡️ SECURITY SCAN SUMMARY")
+        println("=".repeat(70))
+        println()
+
+        val reportsDir = securityReportsDir.get().asFile
+
+        // Check each module report
+        subprojects.forEach { subproject ->
+            val reportFile = File(reportsDir, "${subproject.name}-security.sarif")
+            if (reportFile.exists()) {
+                val vulnCount = countVulnerabilitiesInSarif(reportFile)
+                val status = if (vulnCount == 0) "✅" else "❌"
+                val resultText = if (vulnCount == 0) "Clean" else "$vulnCount vulnerabilities"
+                println("  $status ${subproject.name.padEnd(20)} : $resultText")
+            } else {
+                println("  ⏭️  ${subproject.name.padEnd(20)} : No report found")
+            }
+        }
+
+        println()
+        println("-".repeat(70))
+
+        // Global report
+        val globalReport = File(reportsDir, "global-security.sarif")
+        if (globalReport.exists()) {
+            val globalVulnCount = countVulnerabilitiesInSarif(globalReport)
+            val globalStatus = if (globalVulnCount == 0) "✅" else "❌"
+            val globalResultText = if (globalVulnCount == 0) "Clean" else "$globalVulnCount vulnerabilities"
+            println("  $globalStatus ${"GLOBAL".padEnd(20)} : $globalResultText")
+            println()
+            println("-".repeat(70))
+
+            if (globalVulnCount == 0) {
+                println("✅ No CRITICAL or HIGH vulnerabilities found")
+            } else {
+                println("❌ Found $globalVulnCount CRITICAL/HIGH vulnerabilities - review required")
+            }
+        } else {
+            println("  ⏭️  GLOBAL                : No report found")
         }
 
         println("=".repeat(70))

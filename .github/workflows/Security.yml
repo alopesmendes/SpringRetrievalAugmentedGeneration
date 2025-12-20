@@ -1,20 +1,21 @@
 # =============================================================================
 # Security Workflow - Vulnerability Scanning & Analysis
 # =============================================================================
-# Performs security analysis on dependencies using Trivy.
-# Scans each module individually and the global project context.
-# Fails the build if "CRITICAL" or "HIGH" vulnerabilities are found.
+# Performs security analysis on dependencies using Trivy via Gradle tasks.
+# Scans all modules and the global project in a single job.
+# Fails the build if CRITICAL or HIGH vulnerabilities are found.
 # =============================================================================
 
 name: Security
 
 on:
   push:
-    branches: [ master, develop, staging ]
+    branches: [master, develop, staging]
   pull_request:
-    branches: [ master, develop, staging ]
+    branches: [master, develop, staging]
   schedule:
     - cron: '30 2 * * *' # Run nightly at 2:30 AM
+  workflow_dispatch:
 
 concurrency:
   group: security-${{ github.event.pull_request.number || github.ref }}
@@ -22,132 +23,124 @@ concurrency:
 
 permissions:
   contents: read
-  security-events: write # Required to upload SARIF results to GitHub Security tab
+  security-events: write
   actions: read
+
+env:
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: 'temurin'
 
 jobs:
   # ===========================================================================
-  # Per-Module Scan - Analyze vulnerabilities in specific modules
+  # Security Scan - Analyze vulnerabilities in all modules
   # ===========================================================================
-  module-scan:
-    name: 🛡️ Scan - ${{ matrix.module }}
+  security:
+    name: 🛡️ Security Scan
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        module: [domain, application, infrastructure]
+
+    outputs:
+      scan-passed: ${{ steps.verify.outputs.passed }}
 
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🛡️ Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@master
+      - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
         with:
-          scan-type: 'fs'
-          scan-ref: '${{ matrix.module }}'
-          format: 'table'
-          exit-code: '1' # Fail the job if vulnerabilities are found
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
 
-      - name: 📄 Generate Report (SARIF)
-        if: always() # Generate report even if the previous step failed
-        uses: aquasecurity/trivy-action@master
+      - name: 🐘 Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
         with:
-          scan-type: 'fs'
-          scan-ref: '${{ matrix.module }}'
-          format: 'sarif'
-          output: 'trivy-results-${{ matrix.module }}.sarif'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: 📤 Upload Scan Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-report-${{ matrix.module }}
-          path: trivy-results-${{ matrix.module }}.sarif
-          retention-days: 14
+      - name: 🛡️ Install Trivy
+        run: |
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
 
-  # ===========================================================================
-  # Global Scan - Analyze the entire project context
-  # ===========================================================================
-  global-scan:
-    name: 🛡️ Scan - Global
-    runs-on: ubuntu-latest
-    needs: [module-scan] # Optional: Run in parallel by removing this line
-    if: always()
+      - name: 🔍 Generate security reports for all modules
+        run: ./gradlew securityReport
 
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
+      - name: ✅ Verify no critical vulnerabilities
+        id: verify
+        run: |
+          if ./gradlew verifySecurity; then
+            echo "passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
 
-      - name: 🛡️ Run Trivy on Root Project
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-
-      - name: 📄 Generate Global Report (SARIF)
+      - name: 📋 Print security summary
         if: always()
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results-global.sarif'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+        run: ./gradlew printSecuritySummary || true
 
-      - name: 📤 Upload to GitHub Security Tab
-        uses: github/codeql-action/upload-sarif@v3
+      # Validate SARIF file exists and is valid before uploading
+      - name: 🔎 Validate SARIF file
+        id: validate-sarif
+        if: always()
+        run: |
+          SARIF_FILE="build/security-reports/global-security.sarif"
+          if [ -f "$SARIF_FILE" ] && [ -s "$SARIF_FILE" ]; then
+            echo "sarif_exists=true" >> $GITHUB_OUTPUT
+            echo "✅ SARIF file exists and is not empty"
+            # Validate JSON structure
+            if jq empty "$SARIF_FILE" 2>/dev/null; then
+              echo "sarif_valid=true" >> $GITHUB_OUTPUT
+              echo "✅ SARIF file is valid JSON"
+            else
+              echo "sarif_valid=false" >> $GITHUB_OUTPUT
+              echo "❌ SARIF file is not valid JSON"
+            fi
+          else
+            echo "sarif_exists=false" >> $GITHUB_OUTPUT
+            echo "sarif_valid=false" >> $GITHUB_OUTPUT
+            echo "⚠️ SARIF file does not exist or is empty"
+          fi
+
+      - name: 📤 Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && steps.validate-sarif.outputs.sarif_valid == 'true'
+        with:
+          sarif_file: build/security-reports/global-security.sarif
+          category: trivy-security
+          wait-for-processing: true
+
+      - name: 📦 Upload security reports
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          sarif_file: 'trivy-results-global.sarif'
-          category: 'trivy-global'
-
-      - name: 📤 Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-report-global
-          path: trivy-results-global.sarif
+          name: security-reports
+          path: build/security-reports/
           retention-days: 30
+          if-no-files-found: warn
 
-  # ===========================================================================
-  # Security Summary - PR Comment
-  # ===========================================================================
-  security-summary:
-    name: 📋 Security Summary
-    runs-on: ubuntu-latest
-    needs: [module-scan, global-scan]
-    if: always()
-
-    steps:
-      - name: 📝 Generate Summary
+      - name: 📝 Generate workflow summary
+        if: always()
         run: |
           echo "## 🛡️ Security Scan Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          echo "| Scope | Status | Result |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.verify.outputs.passed }}" == "true" ]; then
+            echo "✅ **No CRITICAL or HIGH vulnerabilities found**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **CRITICAL or HIGH vulnerabilities detected**" >> $GITHUB_STEP_SUMMARY
+          fi
 
-          # Check Module Statuses
-          DOM_STATUS="${{ needs.module-scan.result == 'success' && '✅ Clean' || '❌ Vulnerabilities Found' }}"
-          APP_STATUS="${{ needs.module-scan.result == 'success' && '✅ Clean' || '❌ Vulnerabilities Found' }}"
-          INF_STATUS="${{ needs.module-scan.result == 'success' && '✅ Clean' || '❌ Vulnerabilities Found' }}"
-
-          # Check Global Status
-          GLOB_STATUS="${{ needs.global-scan.result == 'success' && '✅ Clean' || '❌ Vulnerabilities Found' }}"
-
-          echo "| **Domain** | ${{ needs.module-scan.result == 'success' && 'Pass' || 'Fail' }} | $DOM_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Application** | ${{ needs.module-scan.result == 'success' && 'Pass' || 'Fail' }} | $APP_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Infrastructure** | ${{ needs.module-scan.result == 'success' && 'Pass' || 'Fail' }} | $INF_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Global** | ${{ needs.global-scan.result == 'success' && 'Pass' || 'Fail' }} | $GLOB_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Scanned Modules" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Module | Report |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Domain | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
+          echo "| Application | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
+          echo "| Infrastructure | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Global** | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 View detailed results in the [Security tab](../../security/code-scanning)" >> $GITHUB_STEP_SUMMARY

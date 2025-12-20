@@ -21,11 +21,6 @@ concurrency:
   group: analysis-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-permissions:
-  actions: read
-  contents: read
-  security-events: write # Required to upload SARIF results
-
 env:
   JAVA_VERSION: '21'
   JAVA_DISTRIBUTION: 'temurin'
@@ -35,45 +30,57 @@ jobs:
   # CodeQL - Security Vulnerability Scanning
   # ===========================================================================
   analyze-codeql:
-    name: 🛡️ CodeQL Security Scan
+    name: 🛡️ CodeQL (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: java-kotlin
+            build-mode: manual
 
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
       - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
+        if: matrix.language == 'java-kotlin'
         uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: ${{ env.JAVA_DISTRIBUTION }}
 
       - name: 🐘 Setup Gradle
+        if: matrix.language == 'java-kotlin'
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      # Initialize CodeQL tools for scanning.
       - name: 🔍 Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
-          languages: java # 'java' includes Kotlin support
-          queries: security-and-quality # Uses extended query set for better coverage
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-and-quality
 
-      # Autobuild attempts to build the project automatically.
-      # For complex Gradle projects, manual build command is often more reliable.
       - name: 🔨 Build for Analysis
+        if: matrix.build-mode == 'manual'
         run: ./gradlew assemble --no-daemon
 
       - name: 📊 Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
         with:
-          category: "/language:java"
+          category: "/language:${{ matrix.language }}"
 
-  # ===========================================================================
-  # Detekt - Static Analysis & Code Smells (SARIF)
-  # ===========================================================================
   # ===========================================================================
   # Detekt - Static Analysis & Code Smells (SARIF)
   # ===========================================================================
@@ -81,7 +88,7 @@ jobs:
     name: 🔍 Detekt Code Smells
     runs-on: ubuntu-latest
     permissions:
-      security-events: write # Required for uploading results
+      security-events: write
       actions: read
       contents: read
 
@@ -100,11 +107,9 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      # Run detekt on all modules AND the merge task
       - name: 🔍 Run Detekt & Merge Reports
         run: ./gradlew detekt mergeDetektSarif --continue
 
-      # Upload ONLY the single merged file
       - name: 📤 Upload Detekt Results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
         if: success() || failure()
