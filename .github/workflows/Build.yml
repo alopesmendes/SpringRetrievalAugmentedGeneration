@@ -2,20 +2,16 @@
 # Build Workflow - Compile the project
 # =============================================================================
 # Runs the Gradle build task (excludes tests)
-# Triggers: PR to master/develop/staging, manual dispatch
+# Triggers: After Lint workflow completes successfully
 # =============================================================================
 
 name: Build
 
 on:
-  pull_request:
+  workflow_run:
+    workflows: [Lint]
+    types: [completed]
     branches: [master, develop, staging]
-    paths:
-      - '**.kt'
-      - '**.kts'
-      - 'gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
   workflow_dispatch:
   workflow_call:
 
@@ -24,7 +20,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: build-${{ github.event.pull_request.number || github.ref }}
+  group: build-${{ github.event.workflow_run.head_branch || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -32,13 +28,25 @@ env:
   JAVA_DISTRIBUTION: 'temurin'
 
 jobs:
+  # Load environment
+  env:
+    uses: ./.github/workflows/Env.yml
+    with:
+      environment: ${{ inputs.environment || '' }}  # Auto-detect if empty
+    secrets: inherit
+
   build:
+    needs: env
     name: 🔨 Build
     runs-on: ubuntu-latest
+    # Only run if Lint workflow succeeded
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5

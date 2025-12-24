@@ -2,28 +2,17 @@
 # Deploy Workflow - Render Deployment
 # =============================================================================
 # Deploys the application to Render (Free Plan: 2 services only)
-#
-# GitHub Environment → Render Service mapping:
-#   - development, test → image-rag-dev (RENDER_SERVICE_ID_DEV)
-#   - staging, prod     → image-rag-prod (RENDER_SERVICE_ID_PROD)
-#
-# Prerequisites:
-#   1. Create 2 Render services: image-rag-dev, image-rag-prod
-#   2. Add RENDER_API_KEY to GitHub repository secrets
-#   3. Add RENDER_SERVICE_ID_DEV and RENDER_SERVICE_ID_PROD to repository variables
-#   4. Disable auto-deploy in Render (GitHub Actions handles it)
-#
 # Triggers:
-#   - After successful Test workflow
+#   - After successful Coverage workflow
 #   - Manual dispatch with environment selection
 # =============================================================================
 
 name: Deploy
 
 on:
-  # Deploy after tests pass
+  # Deploy after coverage verification passes
   workflow_run:
-    workflows: [Test]
+    workflows: [Coverage]
     types: [completed]
     branches: [master, staging, develop]
 
@@ -54,7 +43,7 @@ on:
         type: string
 
 concurrency:
-  group: deploy-${{ github.event.inputs.environment || github.ref }}
+  group: deploy-${{ github.event.inputs.environment || github.event.workflow_run.head_branch || github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -62,10 +51,17 @@ permissions:
   deployments: write
 
 jobs:
+  # Load environment
+  env:
+    uses: ./.github/workflows/Env.yml
+    with:
+      environment: ${{ inputs.environment || '' }}  # Auto-detect if empty
+    secrets: inherit
   # ===========================================================================
   # Determine Environment & Render Service
   # ===========================================================================
   resolve:
+    needs: env
     name: 🔍 Resolve Environment
     runs-on: ubuntu-latest
     if: >
@@ -89,6 +85,11 @@ jobs:
             SELECTED_ENV="${INPUT_ENVIRONMENT}"
           else
             BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+            # For workflow_run, use the branch from the triggering workflow
+            if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+               BRANCH="${{ github.event.workflow_run.head_branch }}"
+            fi
+
             case "$BRANCH" in
               master|main) SELECTED_ENV="prod" ;;
               staging)     SELECTED_ENV="staging" ;;
@@ -130,6 +131,9 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        with:
+          # Important for workflow_run to get the correct commit
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: 🔧 Resolve Render Service ID
         id: resolve_service
@@ -179,7 +183,7 @@ jobs:
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| GitHub Environment | \`${{ needs.resolve.outputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Render Service | \`image-rag-${{ needs.resolve.outputs.render_service }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branch | \`${GITHUB_REF_NAME}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.event.workflow_run.head_branch || GITHUB_REF_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${GITHUB_SHA::7}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Deployed by | @${GITHUB_ACTOR} |" >> $GITHUB_STEP_SUMMARY
           echo "| Timestamp | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
@@ -250,7 +254,7 @@ jobs:
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| GitHub Environment | \`${{ needs.resolve.outputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Render Service | \`image-rag-${{ needs.resolve.outputs.render_service }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branch | \`${GITHUB_REF_NAME}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.event.workflow_run.head_branch || GITHUB_REF_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Troubleshooting" >> $GITHUB_STEP_SUMMARY
           echo "1. Check [Render Dashboard](https://dashboard.render.com) for build logs" >> $GITHUB_STEP_SUMMARY
