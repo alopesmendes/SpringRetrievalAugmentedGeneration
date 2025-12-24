@@ -4,10 +4,10 @@
 
 ## Metadata
 
-| Field | Value |
-|-------|-------|
-| **Version** | x.x.x |
-| **Author** | @username |
+| Field | Value         |
+|-------|---------------|
+| **Version** | x.x.x         |
+| **Author** | @alopesmendes |
 
 ## Type of Change
 

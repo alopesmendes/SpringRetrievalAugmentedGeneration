@@ -1,0 +1,129 @@
+# =============================================================================
+# Application Configuration - Image RAG
+# =============================================================================
+
+# =============================================================================
+# Server Configuration
+# =============================================================================
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: "always"
+    include-binding-errors: "always"
+    include-stacktrace: ${ERROR_INCLUDE_STACKTRACE:never}
+    include-exception: ${ERROR_INCLUDE_EXCEPTION:false}
+
+spring:
+  profiles:
+    active: ${APP_ENVIRONMENT:development}
+  application:
+    name: ${APP_NAME:image-rag}
+
+  # =============================================================================
+  # MongoDB Configuration
+  # =============================================================================
+  #data:
+  #  mongodb:
+  #    uri: ${MONGODB_URI:mongodb://localhost:27017/imagerag}
+
+  # =============================================================================
+  # AI Configuration (Spring AI)
+  # =============================================================================
+  #ai:
+  #  openai:
+  #    api-key: ${OPENAI_API_KEY:}
+  #    base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+  #    chat:
+  #      options:
+  #        model: ${OPENAI_MODEL:gpt-4o}
+  #        max-tokens: ${OPENAI_MAX_TOKENS:1000}
+
+  # =============================================================================
+  # Servlet / File Upload Configuration
+  # =============================================================================
+  #servlet:
+  #  multipart:
+  #    enabled: true
+  #    max-file-size: ${MAX_FILE_SIZE:10MB}
+  #    max-request-size: ${MAX_REQUEST_SIZE:15MB}
+
+  # =============================================================================
+  # Jackson Configuration
+  # =============================================================================
+  #jackson:
+  #  serialization:
+  #    write-dates-as-timestamps: false
+  #    indent-output: ${JACKSON_INDENT_OUTPUT:false}
+  #  deserialization:
+  #    fail-on-unknown-properties: false
+  #  default-property-inclusion: non_null
+
+  # =============================================================================
+  # DevTools (only active when DEVTOOLS_ENABLED=true)
+  # =============================================================================
+  devtools:
+    restart:
+      enabled: ${DEVTOOLS_ENABLED:false}
+    livereload:
+      enabled: ${DEVTOOLS_ENABLED:false}
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}
+    com.ailtontech: ${LOG_LEVEL_APP:INFO}
+    org.springframework: ${LOG_LEVEL_SPRING:INFO}
+    org.springframework.web: ${LOG_LEVEL_WEB:INFO}
+    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}
+#    org.springframework.data.mongodb: ${LOG_LEVEL_MONGODB:WARN}
+#    org.mongodb.driver: ${LOG_LEVEL_MONGODB:WARN}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# =============================================================================
+# Management / Actuator Configuration
+# =============================================================================
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#       include: ${ACTUATOR_ENDPOINTS:health,info}
+#      base-path: ${ACTUATOR_BASE_PATH:/actuator}
+#  endpoint:
+#    health:
+#      show-details: ${ACTUATOR_HEALTH_DETAILS:when-authorized}
+#    env:
+#      show-values: ${ACTUATOR_ENV_SHOW_VALUES:never}
+
+# =============================================================================
+# OpenAPI / Swagger Configuration
+# =============================================================================
+#springdoc:
+#  api-docs:
+#    enabled: ${SWAGGER_ENABLED:true}
+#    path: /api-docs
+#  swagger-ui:
+#    enabled: ${SWAGGER_ENABLED:true}
+#    path: /swagger-ui.html
+#    operations-sorter: method
+#    tags-sorter: alpha
+#    try-it-out-enabled: ${SWAGGER_TRY_IT_OUT:false}
+
+# =============================================================================
+# Application Custom Properties
+# =============================================================================
+#app:
+#  environment: ${APP_ENVIRONMENT:dev}
+#  security:
+#    jwt:
+#      secret: ${JWT_SECRET:}
+#      expiration: ${JWT_EXPIRATION:86400000}
+#    cors:
+#      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+#  upload:
+#    allowed-types: ${ALLOWED_IMAGE_TYPES:image/jpeg,image/png,image/gif,image/webp}
+#  rate-limit:
+#    enabled: ${RATE_LIMIT_ENABLED:false}
+#    requests-per-minute: ${RATE_LIMIT_REQUESTS_PER_MINUTE:60}
