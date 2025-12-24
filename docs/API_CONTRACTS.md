@@ -4,13 +4,13 @@
 
 ### HTTP Methods
 
-| Method | Purpose | Success Code | Example |
-|--------|---------|--------------|---------|
-| GET | Retrieve resource(s) | 200 | `GET /api/images/{id}` |
-| POST | Create resource | 201 | `POST /api/images` |
-| PUT | Full update | 200 | `PUT /api/images/{id}` |
-| PATCH | Partial update | 200 | `PATCH /api/images/{id}` |
-| DELETE | Remove resource | 204 | `DELETE /api/images/{id}` |
+| Method | Purpose              | Success Code | Example                   |
+|--------|----------------------|--------------|---------------------------|
+| GET    | Retrieve resource(s) | 200          | `GET /api/images/{id}`    |
+| POST   | Create resource      | 201          | `POST /api/images`        |
+| PUT    | Full update          | 200          | `PUT /api/images/{id}`    |
+| PATCH  | Partial update       | 200          | `PATCH /api/images/{id}`  |
+| DELETE | Remove resource      | 204          | `DELETE /api/images/{id}` |
 
 ### URL Patterns
 
@@ -22,17 +22,17 @@
 
 ### Status Codes
 
-| Code | Meaning | When to Use |
-|------|---------|-------------|
-| 200 | OK | Successful GET, PUT, PATCH |
-| 201 | Created | Successful POST |
-| 204 | No Content | Successful DELETE |
-| 400 | Bad Request | Validation error |
-| 401 | Unauthorized | Missing/invalid authentication |
-| 403 | Forbidden | Insufficient permissions |
-| 404 | Not Found | Resource doesn't exist |
-| 409 | Conflict | Duplicate resource |
-| 500 | Internal Server Error | Unexpected error |
+| Code | Meaning               | When to Use                    |
+|------|-----------------------|--------------------------------|
+| 200  | OK                    | Successful GET, PUT, PATCH     |
+| 201  | Created               | Successful POST                |
+| 204  | No Content            | Successful DELETE              |
+| 400  | Bad Request           | Validation error               |
+| 401  | Unauthorized          | Missing/invalid authentication |
+| 403  | Forbidden             | Insufficient permissions       |
+| 404  | Not Found             | Resource doesn't exist         |
+| 409  | Conflict              | Duplicate resource             |
+| 500  | Internal Server Error | Unexpected error               |
 
 ---
 
@@ -122,8 +122,8 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleMethodArgumentNotValid(ex: MethodArgumentNotValidException): ResponseEntity<ValidationErrorResponse> {
-        val fieldErrors = ex.bindingResult.fieldErrors.map { 
-            FieldError(it.field, it.defaultMessage ?: "Invalid value") 
+        val fieldErrors = ex.bindingResult.fieldErrors.map {
+            FieldError(it.field, it.defaultMessage ?: "Invalid value")
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(ValidationErrorResponse(..., fieldErrors = fieldErrors))
@@ -137,44 +137,44 @@ class GlobalExceptionHandler {
 
 ### Class Level
 
-| Annotation | Purpose |
-|------------|---------|
-| `@RestController` | Combines `@Controller` + `@ResponseBody` |
-| `@RequestMapping("/api/examples")` | Base path for all endpoints |
-| `@Tag(name = "Examples")` | OpenAPI grouping |
+| Annotation                         | Purpose                                  |
+|------------------------------------|------------------------------------------|
+| `@RestController`                  | Combines `@Controller` + `@ResponseBody` |
+| `@RequestMapping("/api/examples")` | Base path for all endpoints              |
+| `@Tag(name = "Examples")`          | OpenAPI grouping                         |
 
 ### Method Level
 
-| Annotation | Purpose |
-|------------|---------|
-| `@GetMapping` | HTTP GET |
-| `@PostMapping` | HTTP POST |
-| `@PutMapping("/{id}")` | HTTP PUT with path variable |
-| `@PatchMapping("/{id}")` | HTTP PATCH with path variable |
-| `@DeleteMapping("/{id}")` | HTTP DELETE with path variable |
-| `@ResponseStatus(HttpStatus.CREATED)` | Override default status code |
+| Annotation                            | Purpose                        |
+|---------------------------------------|--------------------------------|
+| `@GetMapping`                         | HTTP GET                       |
+| `@PostMapping`                        | HTTP POST                      |
+| `@PutMapping("/{id}")`                | HTTP PUT with path variable    |
+| `@PatchMapping("/{id}")`              | HTTP PATCH with path variable  |
+| `@DeleteMapping("/{id}")`             | HTTP DELETE with path variable |
+| `@ResponseStatus(HttpStatus.CREATED)` | Override default status code   |
 
 ### Parameter Level
 
-| Annotation | Purpose | Example |
-|------------|---------|---------|
-| `@RequestBody` | Deserialize request body | `@RequestBody request: CreateRequest` |
-| `@Valid` | Trigger validation | `@Valid @RequestBody request: CreateRequest` |
-| `@PathVariable` | Extract path variable | `@PathVariable id: String` |
-| `@RequestParam` | Query parameter | `@RequestParam(defaultValue = "0") page: Int` |
-| `@RequestHeader` | Header value | `@RequestHeader("Authorization") token: String` |
+| Annotation       | Purpose                  | Example                                         |
+|------------------|--------------------------|-------------------------------------------------|
+| `@RequestBody`   | Deserialize request body | `@RequestBody request: CreateRequest`           |
+| `@Valid`         | Trigger validation       | `@Valid @RequestBody request: CreateRequest`    |
+| `@PathVariable`  | Extract path variable    | `@PathVariable id: String`                      |
+| `@RequestParam`  | Query parameter          | `@RequestParam(defaultValue = "0") page: Int`   |
+| `@RequestHeader` | Header value             | `@RequestHeader("Authorization") token: String` |
 
 ### Validation Annotations (on DTOs)
 
-| Annotation | Purpose |
-|------------|---------|
-| `@NotNull` | Field cannot be null |
-| `@NotBlank` | String not null/empty/whitespace |
-| `@NotEmpty` | Collection not null/empty |
-| `@Size(min, max)` | String/collection size |
-| `@Min(value)` / `@Max(value)` | Numeric bounds |
-| `@Email` | Valid email format |
-| `@Pattern(regexp)` | Regex match |
+| Annotation                    | Purpose                          |
+|-------------------------------|----------------------------------|
+| `@NotNull`                    | Field cannot be null             |
+| `@NotBlank`                   | String not null/empty/whitespace |
+| `@NotEmpty`                   | Collection not null/empty        |
+| `@Size(min, max)`             | String/collection size           |
+| `@Min(value)` / `@Max(value)` | Numeric bounds                   |
+| `@Email`                      | Valid email format               |
+| `@Pattern(regexp)`            | Regex match                      |
 
 ### Full Controller Example
 
@@ -235,19 +235,19 @@ class ExampleController(
 
 ### Controller/Method Level
 
-| Annotation | Purpose |
-|------------|---------|
-| `@Tag(name, description)` | Group endpoints |
-| `@Operation(summary, description)` | Document endpoint |
-| `@ApiResponse(responseCode, description)` | Document response |
-| `@ApiResponses` | Multiple response codes |
+| Annotation                                | Purpose                 |
+|-------------------------------------------|-------------------------|
+| `@Tag(name, description)`                 | Group endpoints         |
+| `@Operation(summary, description)`        | Document endpoint       |
+| `@ApiResponse(responseCode, description)` | Document response       |
+| `@ApiResponses`                           | Multiple response codes |
 
 ### Schema Level
 
-| Annotation | Purpose |
-|------------|---------|
-| `@Schema(description, example)` | Document field |
-| `@Schema(hidden = true)` | Hide field from docs |
+| Annotation                      | Purpose              |
+|---------------------------------|----------------------|
+| `@Schema(description, example)` | Document field       |
+| `@Schema(hidden = true)`        | Hide field from docs |
 
 ### Example with OpenAPI
 
@@ -256,7 +256,7 @@ data class CreateExampleRequest(
     @field:NotBlank
     @field:Schema(description = "Example name", example = "My Example")
     val name: String,
-    
+
     @field:Schema(description = "Optional description", nullable = true)
     val description: String?
 )

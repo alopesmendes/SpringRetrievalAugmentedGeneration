@@ -17,25 +17,25 @@ This project follows **Hexagonal Architecture** (Ports & Adapters) with three di
 │                      INFRASTRUCTURE                         │
 │  Spring Boot • Spring AI • MongoDB • Spring Security        │
 │                          ↓                                  │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │                    APPLICATION                       │   │
-│  │            Use Cases • Ports • DTOs                  │   │
-│  │                          ↓                           │   │
-│  │  ┌─────────────────────────────────────────────┐    │   │
-│  │  │                   DOMAIN                     │    │   │
-│  │  │   Entities • Value Objects • Domain Services │    │   │
-│  │  └─────────────────────────────────────────────┘    │   │
-│  └─────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │                    APPLICATION                      │    │
+│  │            Use Cases • Ports • DTOs                 │    │
+│  │                          ↓                          │    │
+│  │  ┌─────────────────────────────────────────────┐    │    │
+│  │  │                   DOMAIN                    │    │    │
+│  │  │   Entities • Value Objects • Domain Services│    │    │
+│  │  └─────────────────────────────────────────────┘    │    │
+│  └─────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## 📊 Code Quality
 
-| Metric | Threshold | Status |
-|--------|-----------|--------|
-| Line Coverage | 80% | [![codecov](https://codecov.io/gh/alopesmendes/SpringRetrievalAugmentedGeneration/branch/master/graph/badge.svg)](https://codecov.io/gh/alopesmendes/SpringRetrievalAugmentedGeneration) |
-| Static Analysis | detekt | [![Lint](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Lint.yml/badge.svg)](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Lint.yml) |
-| Code Style | ktlint | Enforced |
+| Metric          | Threshold | Status                                                                                                                                                                                                            |
+|-----------------|-----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Line Coverage   | 80%       | [![codecov](https://codecov.io/gh/alopesmendes/SpringRetrievalAugmentedGeneration/branch/master/graph/badge.svg)](https://codecov.io/gh/alopesmendes/SpringRetrievalAugmentedGeneration)                          |
+| Static Analysis | detekt    | [![Lint](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Lint.yml/badge.svg)](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Lint.yml) |
+| Code Style      | ktlint    | Enforced                                                                                                                                                                                                          |
 
 ## 🚀 Getting Started
 
@@ -93,12 +93,12 @@ cd SpringRetrievalAugmentedGeneration
 
 ## 🧪 Testing Strategy
 
-| Layer | Test Type | Focus |
-|-------|-----------|-------|
-| Domain | Unit | Business logic, validation |
-| Application | Unit | Use case orchestration |
-| Infrastructure | Integration | Adapters, DB, external services |
-| Full Stack | E2E (Cucumber) | Complete workflows |
+| Layer          | Test Type      | Focus                           |
+|----------------|----------------|---------------------------------|
+| Domain         | Unit           | Business logic, validation      |
+| Application    | Unit           | Use case orchestration          |
+| Infrastructure | Integration    | Adapters, DB, external services |
+| Full Stack     | E2E (Cucumber) | Complete workflows              |
 
 ## 📜 License
 
