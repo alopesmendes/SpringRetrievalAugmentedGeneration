@@ -1,0 +1,92 @@
+# =============================================================================
+# Render Blueprint - Infrastructure as Code
+# =============================================================================
+# Defines 2 services: development and production (free plan)
+#
+# Environment variables are managed in GitHub Environments and passed
+# during deployment via GitHub Actions.
+#
+# GitHub Environment → Render Service mapping:
+#   - development, test → image-rag-dev
+#   - staging, prod     → image-rag-prod
+#
+# Deploy: Render Dashboard → Blueprints → New Blueprint Instance
+# Docs: https://render.com/docs/blueprint-spec
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Development Service
+  # ===========================================================================
+  - type: web
+    name: image-rag-dev
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    branch: develop
+    healthCheckPath: /actuator/health
+    autoDeploy: false  # Deployments handled by GitHub Actions
+
+    buildFilter:
+      paths:
+        - src/**
+        - build.gradle.kts
+        - settings.gradle.kts
+        - Dockerfile
+        - domain/**
+        - application/**
+        - infrastructure/**
+
+    # Only define non-secret defaults here
+    # Secrets (JWT_SECRET, OPENAI_API_KEY, etc.) are set manually in Render Dashboard
+    envVars:
+      - key: SERVER_PORT
+        value: "10000"
+      - key: SPRING_PROFILES_ACTIVE
+        value: dev
+
+  # ===========================================================================
+  # Production Service
+  # ===========================================================================
+  - type: web
+    name: image-rag-prod
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free  # Upgrade to 'starter' for always-on
+    region: oregon
+    branch: master
+    healthCheckPath: /actuator/health
+    autoDeploy: false  # Deployments handled by GitHub Actions
+
+    buildFilter:
+      paths:
+        - src/**
+        - build.gradle.kts
+        - settings.gradle.kts
+        - Dockerfile
+        - domain/**
+        - application/**
+        - infrastructure/**
+
+    # Only define non-secret defaults here
+    # Secrets (JWT_SECRET, OPENAI_API_KEY, etc.) are set manually in Render Dashboard
+    envVars:
+      - key: SERVER_PORT
+        value: "10000"
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+# =============================================================================
+# Manual Configuration Required in Render Dashboard
+# =============================================================================
+# For each service, add these secrets in Environment tab:
+#
+#   JWT_SECRET          - From GitHub Environment secrets
+#   OPENAI_API_KEY      - From GitHub Environment secrets
+#   SPRING_DATA_MONGODB_URI - MongoDB Atlas connection string
+#
+# These are kept out of render.yaml for security.
+# =============================================================================

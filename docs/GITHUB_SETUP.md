@@ -2,25 +2,24 @@
 
 ## Overview
 
-This project uses **GitHub Environments** to manage secrets and variables per environment.
-The `env.yml` and `deploy.yml` workflows automatically select the correct environment based on branch.
+This project uses **GitHub Environments** to manage secrets and variables.
+Deployment uses **Render Free Plan** with 2 services mapped to 4 GitHub environments.
 
-**Deployment Platform**: [Render](https://render.com) (Free Tier)
-
----
-
-## Render Free Tier Limitations
-
-| Feature       | Limit                                        |
-|---------------|----------------------------------------------|
-| Web Services  | 750 hours/month (shared across all services) |
-| Spin-down     | After 15 min inactivity                      |
-| Cold Start    | ~30 seconds                                  |
-| RAM           | 512 MB                                       |
-| Bandwidth     | 100 GB/month                                 |
-| Build Minutes | Unlimited                                    |
-
-> **Tip**: For development/test environments, cold starts are acceptable. For production, consider upgrading to the Starter plan ($7/month) for always-on services.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              GitHub Environments → Render Services              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   development ──┐                                               │
+│                 ├──→ image-rag-dev (Render)                     │
+│   test ─────────┘                                               │
+│                                                                 │
+│   staging ──────┐                                               │
+│                 ├──→ image-rag-prod (Render)                    │
+│   prod ─────────┘                                               │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -43,8 +42,6 @@ Create these 4 environments:
 
 Go to: **Repository → Settings → Secrets and variables → Actions → Secrets**
 
-Add these **repository-level** secrets (shared across all environments):
-
 | Secret           | Description                                      |
 |------------------|--------------------------------------------------|
 | `RENDER_API_KEY` | Render API key (shared across all environments)  |
@@ -52,14 +49,24 @@ Add these **repository-level** secrets (shared across all environments):
 ### Generate Render API Key
 
 1. Go to [Render Dashboard](https://dashboard.render.com)
-2. Click your profile → **Account Settings**
-3. Navigate to **API Keys**
-4. Click **Create API Key**
-5. Copy and save as `RENDER_API_KEY` in GitHub
+2. Click your profile → **Account Settings** → **API Keys**
+3. Click **Create API Key**
+4. Copy and save as `RENDER_API_KEY` in GitHub
 
 ---
 
-## Step 3: Add Environment Secrets
+## Step 3: Add Repository Variables
+
+Go to: **Repository → Settings → Secrets and variables → Actions → Variables**
+
+| Variable                 | Description                        | Example         |
+|--------------------------|------------------------------------|-----------------|
+| `RENDER_SERVICE_ID_DEV`  | Service ID for development service | `srv-abc123...` |
+| `RENDER_SERVICE_ID_PROD` | Service ID for production service  | `srv-xyz789...` |
+
+---
+
+## Step 4: Add Environment Secrets
 
 For **each** GitHub environment, add these secrets:
 
@@ -75,246 +82,150 @@ openssl rand -base64 64
 
 ---
 
-## Step 4: Add Environment Variables
+## Step 5: Add Environment Variables
 
 For **each** GitHub environment, add these variables:
 
-### Render Variables (Required for Deployment)
+| Variable                   | development                        | test          | staging                        | prod              |
+|----------------------------|------------------------------------|---------------|--------------------------------|-------------------|
+| `RENDER_DOMAIN`            | https://image-rag-dev.onrender.com | (same as dev) | https://image-rag.onrender.com | (same as staging) |
+| `APP_ENVIRONMENT`          | development                        | test          | staging                        | prod              |
+| `APP_NAME`                 | image-rag                          | image-rag     | image-rag                      | image-rag         |
+| `LOG_LEVEL_APP`            | DEBUG                              | INFO          | INFO                           | WARN              |
+| `ERROR_INCLUDE_STACKTRACE` | always                             | never         | never                          | never             |
 
-| Variable              | Description                                    | Example                                      |
-|-----------------------|------------------------------------------------|----------------------------------------------|
-| `RENDER_SERVICE_ID`   | Service ID from Render dashboard               | `srv-abc123def456...`                        |
-| `RENDER_DOMAIN`       | Public URL for health checks (optional)        | `https://image-rag-prod.onrender.com`        |
-
-### Application Variables
-
-| Variable                       | development | test      | staging   | prod      |
-|--------------------------------|-------------|-----------|-----------|-----------|
-| `APP_ENVIRONMENT`              | development | test      | staging   | prod      |
-| `APP_NAME`                     | image-rag   | image-rag | image-rag | image-rag |
-| `SERVER_PORT`                  | 10000       | 10000     | 10000     | 10000     |
-| `DEVTOOLS_ENABLED`             | true        | false     | false     | false     |
-| `LOG_LEVEL_ROOT`               | INFO        | WARN      | WARN      | ERROR     |
-| `LOG_LEVEL_APP`                | DEBUG       | INFO      | INFO      | WARN      |
-| `LOG_LEVEL_SPRING`             | DEBUG       | WARN      | WARN      | WARN      |
-| `LOG_LEVEL_WEB`                | DEBUG       | WARN      | WARN      | WARN      |
-| `LOG_LEVEL_SECURITY`           | DEBUG       | WARN      | WARN      | WARN      |
-| `ERROR_INCLUDE_MESSAGE`        | always      | always    | always    | never     |
-| `ERROR_INCLUDE_BINDING_ERRORS` | always      | always    | always    | never     |
-| `ERROR_INCLUDE_STACKTRACE`     | always      | never     | never     | never     |
-| `ERROR_INCLUDE_EXCEPTION`      | true        | false     | false     | false     |
+> **Note**: `development` and `test` share the same `RENDER_DOMAIN` (dev service).
+> `staging` and `prod` share the same `RENDER_DOMAIN` (prod service).
 
 ---
 
-## Step 5: Render Setup
+## Step 6: Render Setup
 
-### 5.1 Create Render Services
+### 6.1 Create 2 Web Services
 
-For each environment, create a separate web service:
+| Service Name     | Branch  | Purpose                          |
+|------------------|---------|----------------------------------|
+| `image-rag-dev`  | develop | Development & Test deployments   |
+| `image-rag-prod` | master  | Staging & Production deployments |
 
+For each service:
 1. Go to [Render Dashboard](https://dashboard.render.com)
 2. Click **New** → **Web Service**
 3. Connect your GitHub repository
-4. Configure the service:
+4. Configure:
 
-| Setting         | Value                                             |
-|-----------------|---------------------------------------------------|
-| Name            | `image-rag-{environment}` (e.g., `image-rag-dev`) |
-| Region          | Oregon (or closest to your users)                 |
-| Branch          | Environment-specific branch (see table below)     |
-| Runtime         | Docker                                            |
-| Dockerfile Path | `./Dockerfile`                                    |
-| Plan            | Free (or Starter for production)                  |
+| Setting         | Development     | Production       |
+|-----------------|-----------------|------------------|
+| Name            | `image-rag-dev` | `image-rag-prod` |
+| Branch          | `develop`       | `master`         |
+| Runtime         | Docker          | Docker           |
+| Dockerfile Path | `./Dockerfile`  | `./Dockerfile`   |
+| Plan            | Free            | Free             |
 
-### 5.2 Branch Configuration per Environment
-
-| GitHub Environment | Render Service Name | Branch   |
-|--------------------|---------------------|----------|
-| `development`      | image-rag-dev       | develop  |
-| `test`             | image-rag-test      | develop  |
-| `staging`          | image-rag-staging   | staging  |
-| `prod`             | image-rag-prod      | master   |
-
-### 5.3 Disable Auto-Deploy
-
-Since we're using GitHub Actions for deployments:
-
-1. Go to your Render service
-2. Navigate to **Settings** → **Build & Deploy**
-3. Set **Auto-Deploy** to **No**
-
-### 5.4 Get Service ID
+### 6.2 Disable Auto-Deploy
 
 For each service:
+1. Go to **Settings** → **Build & Deploy**
+2. Set **Auto-Deploy** to **No**
 
-1. Go to the service in Render Dashboard
+### 6.3 Get Service IDs
+
+1. Open each service in Render Dashboard
 2. Look at the URL: `https://dashboard.render.com/web/srv-XXXXXXXXXX`
-3. Copy the `srv-XXXXXXXXXX` part
-4. Add as `RENDER_SERVICE_ID` in the corresponding GitHub Environment
+3. Copy `srv-XXXXXXXXXX`
+4. Add to GitHub:
+    - Dev service → `RENDER_SERVICE_ID_DEV`
+    - Prod service → `RENDER_SERVICE_ID_PROD`
 
-### 5.5 Configure Environment Variables in Render
+### 6.4 Add Environment Variables in Render
 
-For each Render service, add these environment variables in **Environment** tab:
+For **each** Render service, add in **Environment** tab:
 
-```
-# Application
+```bash
+# Required
 SERVER_PORT=10000
-SPRING_PROFILES_ACTIVE=<environment>  # dev, test, staging, prod
+SPRING_PROFILES_ACTIVE=dev  # or 'prod' for production service
+
+# Secrets (copy from GitHub Environment secrets)
+JWT_SECRET=<your-jwt-secret>
+OPENAI_API_KEY=<your-openai-key>
 
 # Database (when ready)
-SPRING_DATA_MONGODB_URI=<your-mongo-atlas-uri>
-
-# AI (when ready)
-OPENAI_API_KEY=<your-key>
-
-# Security
-JWT_SECRET=<your-secret>
+SPRING_DATA_MONGODB_URI=<mongodb-atlas-uri>
 ```
-
-### 5.6 MongoDB Setup (MongoDB Atlas - Free)
-
-Since Render doesn't offer free MongoDB, use MongoDB Atlas:
-
-1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Create a free M0 cluster (512MB)
-3. Create database user
-4. Whitelist IP: `0.0.0.0/0` (for Render's dynamic IPs)
-5. Get connection string and add to Render service as `SPRING_DATA_MONGODB_URI`
 
 ---
 
-## Environment Mapping Summary
+## Environment Mapping
 
-| GitHub Environment | Render Service    | Branch    | Trigger     |
-|--------------------|-------------------|-----------|-------------|
-| `development`      | image-rag-dev     | feature/* | Manual only |
-| `test`             | image-rag-test    | develop   | On push     |
-| `staging`          | image-rag-staging | staging   | On push     |
-| `prod`             | image-rag-prod    | master    | On push     |
-
----
-
-## Automatic Environment Selection
-
-The `deploy.yml` workflow auto-selects environment based on branch:
-
-| Trigger | Branch    | Environment |
-|---------|-----------|-------------|
-| Push    | master    | prod        |
-| Push    | staging   | staging     |
-| Push    | develop   | test        |
-| PR      | any       | development |
-| Push    | feature/* | development |
+| GitHub Environment | Render Service | Branch    | Trigger |
+|--------------------|----------------|-----------|---------|
+| `development`      | image-rag-dev  | feature/* | Manual  |
+| `test`             | image-rag-dev  | develop   | On push |
+| `staging`          | image-rag-prod | staging   | On push |
+| `prod`             | image-rag-prod | master    | On push |
 
 ---
 
-## Deployment Workflow
+## Deployment Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        DEPLOYMENT FLOW                              │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│   ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐   │
-│   │  Lint    │────▶│  Build   │────▶│  Test    │────▶│  Deploy  │   │
-│   └──────────┘     └──────────┘     └──────────┘     └──────────┘   │
-│                                                            │        │
-│                                                            ▼        │
-│                                                     ┌──────────┐    │
-│                                                     │  Verify  │    │
-│                                                     └──────────┘    │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│                        DEPLOYMENT FLOW                                    │
+├───────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│   ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐         │
+│   │  Lint    │────▶│  Build   │────▶│  Test    │────▶│  Deploy  │         │
+│   └──────────┘     └──────────┘     └──────────┘     └──────────┘         │
+│                                                            │              │
+│                                            ┌───────────────┴──────┐       │
+│                                            ▼                      ▼       │
+│                                     image-rag-dev          image-rag-prod │
+│                                     (dev/test)            (staging/prod)  │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
-
-### Triggers
-
-| Event             | Lint | Build | Test | Deploy       |
-|-------------------|------|-------|------|--------------|
-| PR opened/updated | ✅    | ✅     | ✅    | ❌            |
-| Push to develop   | ✅    | ✅     | ✅    | ✅ test       |
-| Push to staging   | ✅    | ✅     | ✅    | ✅ staging    |
-| Push to master    | ✅    | ✅     | ✅    | ✅ prod       |
-| Manual dispatch   | ✅    | ✅     | ✅    | ✅ (selected) |
 
 ---
 
 ## Complete Setup Checklist
 
-### GitHub Setup
-
-- [ ] Create 4 environments: `development`, `test`, `staging`, `prod`
+### GitHub Repository Level
 - [ ] Add `RENDER_API_KEY` to repository secrets
-- [ ] Add `OPENAI_API_KEY` to each environment (secrets)
-- [ ] Add `JWT_SECRET` to each environment (secrets, unique per env!)
-- [ ] Add `RENDER_SERVICE_ID` to each environment (variables)
-- [ ] Add `RENDER_DOMAIN` to each environment (variables, optional)
-- [ ] Add application variables to each environment
-- [ ] Configure branch protection for `prod` environment
+- [ ] Add `RENDER_SERVICE_ID_DEV` to repository variables
+- [ ] Add `RENDER_SERVICE_ID_PROD` to repository variables
 
-### Render Setup
+### GitHub Environments (for each of 4 environments)
+- [ ] Create environment: `development`, `test`, `staging`, `prod`
+- [ ] Add `OPENAI_API_KEY` secret
+- [ ] Add `JWT_SECRET` secret (unique per environment!)
+- [ ] Add `RENDER_DOMAIN` variable
+- [ ] Add `APP_ENVIRONMENT` variable
+- [ ] Configure branch protection for `prod`
 
-- [ ] Create Render account
-- [ ] Generate API key and save to GitHub
-- [ ] Create 4 web services (one per environment)
-- [ ] Disable auto-deploy on all services
-- [ ] Copy service IDs to GitHub environments
-- [ ] Configure environment variables in each service
-- [ ] Set up MongoDB Atlas (free tier) for database
+### Render (2 services)
+- [ ] Create `image-rag-dev` service (branch: develop)
+- [ ] Create `image-rag-prod` service (branch: master)
+- [ ] Disable auto-deploy on both
+- [ ] Copy service IDs to GitHub
+- [ ] Add environment variables to each service
 
 ---
 
 ## Troubleshooting
 
-### Deployment fails with "RENDER_API_KEY not set"
+### "RENDER_SERVICE_ID_DEV/PROD not set"
+- Add as **repository variable** (not environment variable)
+- Go to: Settings → Secrets and variables → Actions → Variables
 
-1. Verify the API key is added to **repository** secrets (not environment secrets)
-2. Check the API key is valid (regenerate if needed)
-3. Ensure the key has not expired
-
-### Deployment fails with "RENDER_SERVICE_ID not set"
-
-1. Verify the service ID is added to the correct GitHub **Environment**
-2. Check the service ID format (should start with `srv-`)
-3. Ensure the service exists in Render
+### "RENDER_API_KEY not set"
+- Add as **repository secret**
+- Generate at: https://dashboard.render.com/u/settings#api-keys
 
 ### Health check fails
+- Render free tier spins down after 15 min
+- Cold start takes ~30 seconds
+- Verify `/actuator/health` endpoint exists
 
-1. Render free tier services spin down after 15 min inactivity
-2. First request after spin-down takes ~30 seconds
-3. Verify the application exposes `/actuator/health` endpoint
-4. Check `RENDER_DOMAIN` is set correctly (include `https://`)
-
-### Build fails in Render
-
-1. Check build logs in Render Dashboard
-2. Ensure Dockerfile exists in repository root
-3. Verify Java version compatibility (21)
-4. Check Gradle wrapper is committed to repository
-
-### Service shows "Suspended"
-
-1. Free tier services may be suspended due to inactivity
-2. Manually trigger a deploy to wake the service
-3. Consider upgrading to Starter plan for production
-
-### Cold start too slow
-
-1. Free tier cold starts take ~30 seconds
-2. Optimize JVM startup (already configured in Dockerfile)
-3. Consider Starter plan ($7/month) for always-on services
-
----
-
-## Cost Optimization Tips
-
-1. **Use free tier wisely**: 750 hours/month shared across services
-    - 4 services × 24 hours × 31 days = 2,976 hours needed
-    - Free tier only covers ~25% of always-on for 4 services
-    - Solution: Only keep staging/prod running continuously
-
-2. **Database**: Use MongoDB Atlas free tier (512MB) instead of Render's paid databases
-
-3. **Upgrade strategically**: Only upgrade production to Starter ($7/month)
-
-4. **Monitor usage**: Check Render Dashboard → Usage regularly
+### Wrong service deployed
+- Check the environment-to-service mapping in Deploy.yml
+- Verify branch triggers in workflow
