@@ -4,11 +4,11 @@ This project uses **ktlint** and **detekt** for code quality enforcement with **
 
 ## Tools Overview
 
-| Tool | Purpose | Version |
-|------|---------|---------|
-| **ktlint** | Code style & formatting | 1.5.0 |
-| **detekt** | Static code analysis | 1.23.8 |
-| **pre-commit** | Git hooks framework | 5.0.0 |
+| Tool           | Purpose                 | Version |
+|----------------|-------------------------|---------|
+| **ktlint**     | Code style & formatting | 1.5.0   |
+| **detekt**     | Static code analysis    | 1.23.8  |
+| **pre-commit** | Git hooks framework     | 5.0.0   |
 
 ## Quick Start
 
@@ -85,16 +85,16 @@ project/
 
 The following hooks run automatically on each commit:
 
-| Hook | Description | Runs On |
-|------|-------------|---------|
-| `trailing-whitespace` | Remove trailing whitespace | All files |
-| `end-of-file-fixer` | Ensure files end with newline | All files |
-| `check-yaml` | Validate YAML syntax | `.yml`, `.yaml` |
-| `check-added-large-files` | Block large files (>1MB) | All files |
-| `check-merge-conflict` | Check for merge conflicts | All files |
-| `detect-private-key` | Prevent committing secrets | All files |
-| `ktlint-check` | Check Kotlin code style | `.kt`, `.kts` |
-| `detekt` | Static code analysis | `.kt` |
+| Hook                      | Description                   | Runs On         |
+|---------------------------|-------------------------------|-----------------|
+| `trailing-whitespace`     | Remove trailing whitespace    | All files       |
+| `end-of-file-fixer`       | Ensure files end with newline | All files       |
+| `check-yaml`              | Validate YAML syntax          | `.yml`, `.yaml` |
+| `check-added-large-files` | Block large files (>1MB)      | All files       |
+| `check-merge-conflict`    | Check for merge conflicts     | All files       |
+| `detect-private-key`      | Prevent committing secrets    | All files       |
+| `ktlint-check`            | Check Kotlin code style       | `.kt`, `.kts`   |
+| `detekt`                  | Static code analysis          | `.kt`           |
 
 ## Ktlint Rules
 

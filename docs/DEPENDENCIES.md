@@ -27,13 +27,13 @@ java {
 dependencies {
     // Web
     implementation("org.springframework.boot:spring-boot-starter-web")
-    
+
     // Security
     implementation("org.springframework.boot:spring-boot-starter-security")
-    
+
     // MongoDB
     implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
-    
+
     // Validation
     implementation("org.springframework.boot:spring-boot-starter-validation")
 }
@@ -82,17 +82,17 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    
+
     // Mockito for Kotlin
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
-    
+
     // Security testing
     testImplementation("org.springframework.security:spring-security-test")
-    
+
     // Testcontainers for MongoDB
     testImplementation("org.testcontainers:mongodb:1.20.4")
     testImplementation("org.testcontainers:junit-jupiter:1.20.4")
-    
+
     // ArchUnit for architecture tests
     testImplementation("com.tngtech.archunit:archunit-junit5:1.4.0")
 }
@@ -136,17 +136,17 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
     implementation("org.springframework.boot:spring-boot-starter-validation")
-    
+
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-    
+
     // Spring AI
     implementation("org.springframework.ai:spring-ai-openai-spring-boot-starter")
-    
+
     // OpenAPI Documentation
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0")
-    
+
     // Testing
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
@@ -173,17 +173,17 @@ tasks.withType<Test> {
 
 ## Version Summary
 
-| Dependency               | Version   | Purpose                          |
-|--------------------------|-----------|----------------------------------|
-| Kotlin                   | 2.2.21    | Language                         |
-| Spring Boot              | 4.0.0     | Framework                        |
-| Spring AI                | 1.1.1     | AI/Image analysis                |
-| Spring Security          | 7.0.x     | Authentication/Authorization     |
-| Spring Data MongoDB      | 2025.1.x  | Database                         |
-| springdoc-openapi        | 3.0.0     | API documentation                |
-| Mockito Kotlin           | 5.4.0     | Mocking in tests                 |
-| Testcontainers           | 1.20.4    | Integration testing              |
-| ArchUnit                 | 1.4.0     | Architecture testing             |
+| Dependency               | Purpose                          |
+|--------------------------|----------------------------------|
+| Kotlin                   | Language                         |
+| Spring Boot              | Framework                        |
+| Spring AI                | AI/Image analysis                |
+| Spring Security          | Authentication/Authorization     |
+| Spring Data MongoDB      | Database                         |
+| springdoc-openapi        | API documentation                |
+| Mockito Kotlin           | Mocking in tests                 |
+| Testcontainers           | Integration testing              |
+| ArchUnit                 | Architecture testing             |
 
 ---
 

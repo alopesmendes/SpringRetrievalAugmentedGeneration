@@ -1,0 +1,79 @@
+# =============================================================================
+# .dockerignore - Exclude files from Docker build context
+# =============================================================================
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Build outputs
+build/
+*/build/
+out/
+target/
+
+# Gradle
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Node (if any frontend)
+node_modules/
+
+# Test and coverage reports
+**/test-results/
+**/reports/
+*.exec
+coverage/
+
+# Documentation (not needed in runtime)
+docs/
+*.md
+!README.md
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+Jenkinsfile
+azure-pipelines.yml
+
+# Docker files (prevent recursive copy)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Render files
+render.yaml
+
+# Environment files (secrets should come from Render)
+.env
+.env.*
+*.env
+
+# Editor configs
+.editorconfig
+
+# Linting configs
+.pre-commit-config.yaml
+config/detekt/
+tools/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

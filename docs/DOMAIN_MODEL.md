@@ -23,14 +23,14 @@ data class Example(
     init {
         require(name.isNotBlank()) { "Name cannot be blank" }
     }
-    
+
     fun updateName(newName: String): Example {
         return copy(
             name = newName,
             updatedAt = Instant.now()
         )
     }
-    
+
     companion object {
         fun create(name: String): Example {
             val now = Instant.now()
@@ -67,7 +67,7 @@ value class ExampleId(val value: String) {
     init {
         require(value.isNotBlank()) { "Id cannot be blank" }
     }
-    
+
     companion object {
         fun generate(): ExampleId = ExampleId(UUID.randomUUID().toString())
         fun from(value: String): ExampleId = ExampleId(value)
@@ -134,16 +134,16 @@ sealed class DomainException(message: String) : RuntimeException(message)
 // Not found exceptions
 sealed class NotFoundException(message: String) : DomainException(message)
 
-data class EntityNotFoundException(val entity: String, val id: String) : 
+data class EntityNotFoundException(val entity: String, val id: String) :
     NotFoundException("$entity with id $id not found")
 
 // Validation exceptions
 sealed class ValidationException(message: String) : DomainException(message)
 
-data class InvalidEntityException(override val message: String) : 
+data class InvalidEntityException(override val message: String) :
     ValidationException(message)
 
-data class InvalidOperationException(override val message: String) : 
+data class InvalidOperationException(override val message: String) :
     ValidationException(message)
 ```
 
@@ -155,7 +155,7 @@ Use Kotlin `Result<T>` for error handling across layers:
 // Domain layer - returns Result
 @DomainService
 class ExampleDomainService {
-    
+
     fun validate(entity: Entity): Result<Entity> {
         return if (entity.isValid()) {
             Result.success(entity)
@@ -170,7 +170,7 @@ class ExampleUseCase(
     private val repository: IExampleRepository,
     private val domainService: ExampleDomainService
 ) : IExampleUseCase {
-    
+
     override operator fun invoke(command: ExampleCommand): Result<ExampleResult> {
         return domainService.validate(command.toEntity())
             .map { entity -> repository.save(entity) }
@@ -181,12 +181,12 @@ class ExampleUseCase(
 // Infrastructure layer - fold to HTTP response
 @RestController
 class ExampleController(private val useCase: IExampleUseCase) {
-    
+
     @PostMapping
     fun create(@RequestBody request: ExampleRequest): ResponseEntity<Any> {
         return useCase(request.toCommand()).fold(
             onSuccess = { result -> ResponseEntity.ok(result.toResponse()) },
-            onFailure = { error -> 
+            onFailure = { error ->
                 when (error) {
                     is NotFoundException -> ResponseEntity.notFound().build()
                     is ValidationException -> ResponseEntity.badRequest().body(error.message)
@@ -216,12 +216,12 @@ class ExampleController(private val useCase: IExampleUseCase) {
 
 ### Where Validation Lives
 
-| Type | Location | Purpose |
-|------|----------|---------|
-| Format validation | Value Object `init` | Email format, ID format |
-| Business invariants | Entity `init` | Required fields, constraints |
-| Cross-entity rules | Domain Service | Rules involving multiple entities |
-| Use case preconditions | Use Case | Authorization, existence checks |
+| Type                   | Location            | Purpose                           |
+|------------------------|---------------------|-----------------------------------|
+| Format validation      | Value Object `init` | Email format, ID format           |
+| Business invariants    | Entity `init`       | Required fields, constraints      |
+| Cross-entity rules     | Domain Service      | Rules involving multiple entities |
+| Use case preconditions | Use Case            | Authorization, existence checks   |
 
 ### Pattern
 
@@ -231,7 +231,7 @@ data class Email(val value: String) {
     init {
         require(value.matches(EMAIL_REGEX)) { "Invalid email format" }
     }
-    
+
     companion object {
         private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@(.+)$")
     }
@@ -263,7 +263,7 @@ Use domain services when logic:
 ```kotlin
 @DomainService
 class ExampleDomainService {
-    
+
     fun calculateSomething(entity1: Entity1, entity2: Entity2): Result {
         // Cross-entity business logic
     }

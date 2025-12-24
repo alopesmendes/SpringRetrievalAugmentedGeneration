@@ -17,7 +17,7 @@ This project follows **Hexagonal Architecture** (Ports & Adapters) to ensure fra
                     │  └──────┬──────┘    └───────┬────────┘  │
                     │         │                   │           │
                     │         ▼                   ▼           │
-                    │  ┌─────────────────────────────────────┐    │
+                    │  ┌─────────────────────────────────┐    │
                     │  │         INPUT PORTS             │    │
                     │  │        (Use Cases)              │    │
                     │  └──────────────┬──────────────────┘    │
@@ -94,12 +94,12 @@ Contains all framework-specific implementations (adapters).
   - REST Controllers (Spring MVC)
   - API DTOs and mappers
   - OpenAPI/Swagger configuration
-  
+
 - **Outbound Adapters** (Driven)
   - MongoDB Repository implementations
   - Spring AI adapter for image analysis
   - Spring Security configuration
-  
+
 - **Configuration**
   - Spring Boot configuration
   - Bean definitions
@@ -176,11 +176,11 @@ src/
 └─────────────────────────────────────────────────────────┘
 ```
 
-| Layer          | Can Depend On        | Cannot Depend On     |
-|----------------|----------------------|----------------------|
-| Domain         | Kotlin stdlib only   | Application, Infrastructure |
-| Application    | Domain               | Infrastructure       |
-| Infrastructure | Application, Domain  | -                    |
+| Layer          | Can Depend On       | Cannot Depend On            |
+|----------------|---------------------|-----------------------------|
+| Domain         | Kotlin stdlib only  | Application, Infrastructure |
+| Application    | Domain              | Infrastructure              |
+| Infrastructure | Application, Domain | -                           |
 
 **Enforcement:**
 - Use ArchUnit tests to verify dependency rules
@@ -278,9 +278,9 @@ project/
 
 ## Testing Strategy by Layer
 
-| Layer          | Test Type         | Focus                          |
-|----------------|-------------------|--------------------------------|
-| Domain         | Unit Tests        | Business logic, validation     |
-| Application    | Unit Tests        | Use case orchestration         |
-| Infrastructure | Integration Tests | Adapters, DB, external services|
-| Full Stack     | E2E Tests         | Complete workflows             |
+| Layer          | Test Type         | Focus                           |
+|----------------|-------------------|---------------------------------|
+| Domain         | Unit Tests        | Business logic, validation      |
+| Application    | Unit Tests        | Use case orchestration          |
+| Infrastructure | Integration Tests | Adapters, DB, external services |
+| Full Stack     | E2E Tests         | Complete workflows              |

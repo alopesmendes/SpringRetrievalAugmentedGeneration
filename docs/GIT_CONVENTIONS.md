@@ -8,11 +8,11 @@ This document describes the git workflow, branch naming conventions, and commit 
 
 ### Main Branches
 
-| Branch | Purpose | Protected |
-|--------|---------|-----------|
-| `main` / `master` | Production-ready code | ✅ Yes |
-| `develop` | Integration branch for features | ✅ Yes |
-| `staging` | Pre-production testing | ✅ Yes |
+| Branch            | Purpose                         | Protected |
+|-------------------|---------------------------------|-----------|
+| `main` / `master` | Production-ready code           | ✅ Yes     |
+| `develop`         | Integration branch for features | ✅ Yes     |
+| `staging`         | Pre-production testing          | ✅ Yes     |
 
 ### Working Branches
 
@@ -24,20 +24,20 @@ prefix/issue-number-short-description
 
 #### Supported Prefixes
 
-| Prefix | Purpose | Example |
-|--------|---------|---------|
-| `feat` | New feature | `feat/123-add-user-authentication` |
-| `fix` | Bug fix | `fix/456-resolve-login-error` |
-| `hotfix` | Critical production fix | `hotfix/789-patch-security-vulnerability` |
-| `chore` | Maintenance tasks | `chore/101-update-dependencies` |
-| `docs` | Documentation changes | `docs/202-update-readme` |
-| `style` | Code style changes (formatting) | `style/303-fix-indentation` |
-| `refactor` | Code refactoring | `refactor/404-extract-service-layer` |
-| `test` | Adding or updating tests | `test/505-add-unit-tests` |
-| `perf` | Performance improvements | `perf/606-optimize-query` |
-| `ci` | CI/CD changes | `ci/707-add-github-actions` |
-| `build` | Build system changes | `build/808-update-gradle-config` |
-| `revert` | Revert previous changes | `revert/909-undo-breaking-change` |
+| Prefix     | Purpose                         | Example                                   |
+|------------|---------------------------------|-------------------------------------------|
+| `feat`     | New feature                     | `feat/123-add-user-authentication`        |
+| `fix`      | Bug fix                         | `fix/456-resolve-login-error`             |
+| `hotfix`   | Critical production fix         | `hotfix/789-patch-security-vulnerability` |
+| `chore`    | Maintenance tasks               | `chore/101-update-dependencies`           |
+| `docs`     | Documentation changes           | `docs/202-update-readme`                  |
+| `style`    | Code style changes (formatting) | `style/303-fix-indentation`               |
+| `refactor` | Code refactoring                | `refactor/404-extract-service-layer`      |
+| `test`     | Adding or updating tests        | `test/505-add-unit-tests`                 |
+| `perf`     | Performance improvements        | `perf/606-optimize-query`                 |
+| `ci`       | CI/CD changes                   | `ci/707-add-github-actions`               |
+| `build`    | Build system changes            | `build/808-update-gradle-config`          |
+| `revert`   | Revert previous changes         | `revert/909-undo-breaking-change`         |
 
 ### Branch Naming Rules
 
@@ -62,14 +62,14 @@ prefix/issue-number-short-description
 
 ### Components
 
-| Component | Required | Description |
-|-----------|----------|-------------|
-| `gitmoji` | ❌ Optional | Emoji or `:shortcode:` at the start |
-| `prefix` | ✅ Yes | Type of change (feat, fix, etc.) |
-| `(#issue)` | ✅ Yes | Issue/ticket number from branch |
-| `message` | ✅ Yes | Short description (imperative mood) |
-| `body` | ❌ Optional | Detailed explanation |
-| `footer` | ❌ Optional | Breaking changes, references |
+| Component  | Required   | Description                         |
+|------------|------------|-------------------------------------|
+| `gitmoji`  | ❌ Optional | Emoji or `:shortcode:` at the start |
+| `prefix`   | ✅ Yes      | Type of change (feat, fix, etc.)    |
+| `(#issue)` | ✅ Yes      | Issue/ticket number from branch     |
+| `message`  | ✅ Yes      | Short description (imperative mood) |
+| `body`     | ❌ Optional | Detailed explanation                |
+| `footer`   | ❌ Optional | Breaking changes, references        |
 
 ### Automatic Formatting
 
@@ -77,35 +77,35 @@ The `prepare-commit-msg` hook automatically formats your commits:
 
 #### Without Gitmoji
 
-| You Write | Git Saves |
-|-----------|-----------|
+| You Write                 | Git Saves                             |
+|---------------------------|---------------------------------------|
 | `add user authentication` | `feat(#123): add user authentication` |
-| `resolve null pointer` | `fix(#456): resolve null pointer` |
-| `update dependencies` | `chore(#789): update dependencies` |
+| `resolve null pointer`    | `fix(#456): resolve null pointer`     |
+| `update dependencies`     | `chore(#789): update dependencies`    |
 
 #### With Gitmoji (Shortcode)
 
-| You Write | Git Saves |
-|-----------|-----------|
-| `:sparkles: add feature` | `:sparkles: feat(#123): add feature` |
-| `:bug: fix validation` | `:bug: fix(#456): fix validation` |
+| You Write                | Git Saves                             |
+|--------------------------|---------------------------------------|
+| `:sparkles: add feature` | `:sparkles: feat(#123): add feature`  |
+| `:bug: fix validation`   | `:bug: fix(#456): fix validation`     |
 | `:wrench: update config` | `:wrench: chore(#789): update config` |
 
 #### With Gitmoji (Unicode)
 
-| You Write | Git Saves |
-|-----------|-----------|
-| `✨ add feature` | `✨ feat(#123): add feature` |
-| `🐛 fix validation` | `🐛 fix(#456): fix validation` |
-| `🔧 update config` | `🔧 chore(#789): update config` |
+| You Write           | Git Saves                       |
+|---------------------|---------------------------------|
+| `✨ add feature`     | `✨ feat(#123): add feature`     |
+| `🐛 fix validation` | `🐛 fix(#456): fix validation`  |
+| `🔧 update config`  | `🔧 chore(#789): update config` |
 
 #### Override Branch Prefix
 
 If you need a different prefix than your branch suggests:
 
-| Branch | You Write | Git Saves |
-|--------|-----------|-----------|
-| `feat/123-feature` | `fix: correct typo` | `fix(#123): correct typo` |
+| Branch             | You Write                 | Git Saves                       |
+|--------------------|---------------------------|---------------------------------|
+| `feat/123-feature` | `fix: correct typo`       | `fix(#123): correct typo`       |
 | `feat/123-feature` | `:bug: fix: correct typo` | `:bug: fix(#123): correct typo` |
 
 ---
@@ -114,31 +114,31 @@ If you need a different prefix than your branch suggests:
 
 Common gitmojis used in this project:
 
-| Emoji | Shortcode | When to Use |
-|-------|-----------|-------------|
-| ✨ | `:sparkles:` | New feature |
-| 🐛 | `:bug:` | Bug fix |
-| 🔥 | `:fire:` | Remove code/files |
-| 📝 | `:memo:` | Documentation |
-| 🎨 | `:art:` | Improve structure/format |
-| ⚡ | `:zap:` | Performance improvement |
-| 🔧 | `:wrench:` | Configuration changes |
-| 🔨 | `:hammer:` | Development scripts |
-| ♻️ | `:recycle:` | Refactor code |
-| ✅ | `:white_check_mark:` | Add/update tests |
-| 🔒 | `:lock:` | Security fix |
-| ⬆️ | `:arrow_up:` | Upgrade dependencies |
-| ⬇️ | `:arrow_down:` | Downgrade dependencies |
-| 🚀 | `:rocket:` | Deploy |
-| 💄 | `:lipstick:` | UI/style updates |
-| 🎉 | `:tada:` | Initial commit |
-| 🚧 | `:construction:` | Work in progress |
-| 💚 | `:green_heart:` | Fix CI build |
-| 👷 | `:construction_worker:` | CI changes |
-| 📦 | `:package:` | Build changes |
-| 🔀 | `:twisted_rightwards_arrows:` | Merge branches |
-| ⏪ | `:rewind:` | Revert changes |
-| 🗑️ | `:wastebasket:` | Deprecate code |
+| Emoji | Shortcode                     | When to Use              |
+|-------|-------------------------------|--------------------------|
+| ✨     | `:sparkles:`                  | New feature              |
+| 🐛    | `:bug:`                       | Bug fix                  |
+| 🔥    | `:fire:`                      | Remove code/files        |
+| 📝    | `:memo:`                      | Documentation            |
+| 🎨    | `:art:`                       | Improve structure/format |
+| ⚡     | `:zap:`                       | Performance improvement  |
+| 🔧    | `:wrench:`                    | Configuration changes    |
+| 🔨    | `:hammer:`                    | Development scripts      |
+| ♻️    | `:recycle:`                   | Refactor code            |
+| ✅     | `:white_check_mark:`          | Add/update tests         |
+| 🔒    | `:lock:`                      | Security fix             |
+| ⬆️    | `:arrow_up:`                  | Upgrade dependencies     |
+| ⬇️    | `:arrow_down:`                | Downgrade dependencies   |
+| 🚀    | `:rocket:`                    | Deploy                   |
+| 💄    | `:lipstick:`                  | UI/style updates         |
+| 🎉    | `:tada:`                      | Initial commit           |
+| 🚧    | `:construction:`              | Work in progress         |
+| 💚    | `:green_heart:`               | Fix CI build             |
+| 👷    | `:construction_worker:`       | CI changes               |
+| 📦    | `:package:`                   | Build changes            |
+| 🔀    | `:twisted_rightwards_arrows:` | Merge branches           |
+| ⏪     | `:rewind:`                    | Revert changes           |
+| 🗑️   | `:wastebasket:`               | Deprecate code           |
 
 Full list: [gitmoji.dev](https://gitmoji.dev/)
 
