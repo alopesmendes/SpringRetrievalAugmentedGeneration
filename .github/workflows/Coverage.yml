@@ -9,10 +9,29 @@
 name: Coverage
 
 on:
+  pull_request:
+    branches: [ master, develop, staging ]
+    paths:
+      - '**.kt'
+      - '**.kts'
+      - 'gradle/**'
+      - '**/build.gradle.kts'
+      - '**.yml'
+      - '**.yaml'
+
+  push:
+    branches: [ master, develop, staging ]
+    paths:
+      - '**.kt'
+      - '**.kts'
+      - 'gradle/**'
+      - '**/build.gradle.kts'
+      - '**.yml'
+      - '**.yaml'
+
   workflow_run:
     workflows: [Test]
     types: [completed]
-    branches: [master, develop, staging]
   workflow_dispatch:
 
 concurrency:
