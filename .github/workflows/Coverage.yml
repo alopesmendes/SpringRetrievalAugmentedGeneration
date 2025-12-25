@@ -3,46 +3,40 @@
 # =============================================================================
 # Generates coverage reports for all modules using Kover in a single job,
 # enforces 80% minimum global coverage, and uploads to Codecov.
-# Triggers: After Test workflow completes successfully, manual dispatch
+# Triggers: PR to protected branches, push to protected branches, manual dispatch
 # =============================================================================
 
 name: Coverage
 
 on:
   pull_request:
-    branches: [ master, develop, staging ]
+    branches: [master, develop, staging]
     paths:
       - '**.kt'
       - '**.kts'
       - 'gradle/**'
       - '**/build.gradle.kts'
       - '**.yml'
-      - '**.yaml'
 
   push:
-    branches: [ master, develop, staging ]
+    branches: [master, develop, staging]
     paths:
       - '**.kt'
       - '**.kts'
       - 'gradle/**'
       - '**/build.gradle.kts'
-      - '**.yml'
-      - '**.yaml'
+      - '*.yml'
 
-  workflow_run:
-    workflows: [Test]
-    types: [completed]
   workflow_dispatch:
 
 concurrency:
-  group: coverage-${{ github.event.workflow_run.head_branch || github.ref }}
+  group: coverage-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
   checks: write
   pull-requests: write
-  actions: read
 
 env:
   JAVA_VERSION: '21'
@@ -54,10 +48,7 @@ jobs:
   # ===========================================================================
   coverage:
     name: 📊 Coverage
-
     runs-on: ubuntu-latest
-    # Only run if Test workflow succeeded
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
 
     outputs:
       coverage-passed: ${{ steps.verify.outputs.passed }}
@@ -65,8 +56,6 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5
