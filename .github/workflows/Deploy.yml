@@ -180,7 +180,7 @@ jobs:
           wait_deploy: true
           github_deployment: true
           deployment_environment: ${{ needs.env.outputs.environment }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.PROJECT_TOKEN }}
 
       - name: 📁 Deployment summary
         run: |
