@@ -5,6 +5,8 @@
 This project uses **GitHub Environments** to manage secrets and variables.
 Deployment uses **Render Free Plan** with 2 services mapped to 4 GitHub environments.
 
+All workflows trigger on both **PR** and **Push** events for consistent CI/CD behavior.
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │              GitHub Environments → Render Services              │
@@ -20,6 +22,58 @@ Deployment uses **Render Free Plan** with 2 services mapped to 4 GitHub environm
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Deployment Flow
+
+All workflows trigger on **PR** and **Push** to master/develop/staging branches.
+Chain ordering is maintained via `workflow_run` triggers.
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            DEPLOYMENT FLOW                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────┐                                                                │
+│  │ Security │ (Independent - PR & Push)                                      │
+│  └──────────┘                                                                │
+│                                                                              │
+│                    ┌──────────┐                                              │
+│               ┌───▶│ Analysis │ (PR & Push + after Lint)                     │
+│               │    └──────────┘                                              │
+│  ┌──────────┐ │                                                              │
+│  │   Lint   │─┤    (Entry Point - PR & Push)                                 │
+│  └──────────┘ │                                                              │
+│               │    ┌──────────┐     ┌──────────┐     ┌──────────┐            │
+│               └───▶│  Build   │────▶│   Test   │────▶│ Coverage │            │
+│                    └──────────┘     └──────────┘     └──────────┘            │
+│                    (PR & Push)      (PR & Push)      (PR & Push)             │
+│                                                           │                  │
+│                                                           ▼                  │
+│                                                     ┌──────────┐             │
+│                                                     │  Deploy  │             │
+│                                                     └──────────┘             │
+│                                                     (Push only)              │
+│                                                          │                   │
+│                                          ┌───────────────┴───────┐           │
+│                                          ▼                       ▼           │
+│                                   image-rag-dev           image-rag-prod     │
+│                                     (dev/test)            (staging/prod)     │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Workflow Triggers
+
+| Workflow | PR Trigger | Push Trigger | Chain Trigger  |
+|----------|------------|--------------|----------------|
+| Lint     | ✅          | ✅            | Entry point    |
+| Build    | ✅          | ✅            | After Lint     |
+| Test     | ✅          | ✅            | After Build    |
+| Coverage | ✅          | ✅            | After Test     |
+| Deploy   | ❌          | ✅            | After Coverage |
+| Analysis | ✅          | ✅            | After Lint     |
+| Security | ✅          | ✅            | Independent    |
 
 ---
 
@@ -45,6 +99,7 @@ Go to: **Repository → Settings → Secrets and variables → Actions → Secre
 | Secret           | Description                                      |
 |------------------|--------------------------------------------------|
 | `RENDER_API_KEY` | Render API key (shared across all environments)  |
+| `CODECOV_TOKEN`  | Codecov token for coverage reporting             |
 
 ### Generate Render API Key
 
@@ -89,9 +144,11 @@ For **each** GitHub environment, add these variables:
 | Variable                   | development                        | test          | staging                        | prod              |
 |----------------------------|------------------------------------|---------------|--------------------------------|-------------------|
 | `RENDER_DOMAIN`            | https://image-rag-dev.onrender.com | (same as dev) | https://image-rag.onrender.com | (same as staging) |
+| `RENDER_SERVICE_ID`        | srv-xxx (dev service)              | srv-xxx (dev) | srv-yyy (prod service)         | srv-yyy (prod)    |
 | `APP_ENVIRONMENT`          | development                        | test          | staging                        | prod              |
 | `APP_NAME`                 | image-rag                          | image-rag     | image-rag                      | image-rag         |
 | `LOG_LEVEL_APP`            | DEBUG                              | INFO          | INFO                           | WARN              |
+| `LOG_LEVEL_ROOT`           | INFO                               | WARN          | WARN                           | ERROR             |
 | `ERROR_INCLUDE_STACKTRACE` | always                             | never         | never                          | never             |
 
 > **Note**: `development` and `test` share the same `RENDER_DOMAIN` (dev service).
@@ -133,9 +190,9 @@ For each service:
 1. Open each service in Render Dashboard
 2. Look at the URL: `https://dashboard.render.com/web/srv-XXXXXXXXXX`
 3. Copy `srv-XXXXXXXXXX`
-4. Add to GitHub:
-    - Dev service → `RENDER_SERVICE_ID_DEV`
-    - Prod service → `RENDER_SERVICE_ID_PROD`
+4. Add to GitHub Environment variables:
+    - Dev service → Add to `development` and `test` environments
+    - Prod service → Add to `staging` and `prod` environments
 
 ### 6.4 Add Environment Variables in Render
 
@@ -158,31 +215,49 @@ SPRING_DATA_MONGODB_URI=<mongodb-atlas-uri>
 
 ## Environment Mapping
 
-| GitHub Environment | Render Service | Branch    | Trigger |
-|--------------------|----------------|-----------|---------|
-| `development`      | image-rag-dev  | feature/* | Manual  |
-| `test`             | image-rag-dev  | develop   | On push |
-| `staging`          | image-rag-prod | staging   | On push |
-| `prod`             | image-rag-prod | master    | On push |
+| GitHub Environment | Render Service | Branch    | Trigger      |
+|--------------------|----------------|-----------|--------------|
+| `development`      | image-rag-dev  | feature/* | Manual only  |
+| `test`             | image-rag-dev  | develop   | On push      |
+| `staging`          | image-rag-prod | staging   | On push      |
+| `prod`             | image-rag-prod | master    | On push      |
 
 ---
 
-## Deployment Flow
+## Using Env.yml in Your Workflows
 
-```
-┌───────────────────────────────────────────────────────────────────────────┐
-│                        DEPLOYMENT FLOW                                    │
-├───────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│   ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐         │
-│   │  Lint    │────▶│  Build   │────▶│  Test    │────▶│  Deploy  │         │
-│   └──────────┘     └──────────┘     └──────────┘     └──────────┘         │
-│                                                            │              │
-│                                            ┌───────────────┴──────┐       │
-│                                            ▼                      ▼       │
-│                                     image-rag-dev          image-rag-prod │
-│                                     (dev/test)            (staging/prod)  │
-└───────────────────────────────────────────────────────────────────────────┘
+The Env.yml workflow provides environment resolution. Each workflow now includes
+its own environment resolution for consistency, but you can still use Env.yml
+for custom workflows:
+
+```yaml
+name: My Workflow
+
+on:
+  push:
+    branches: [master, staging, develop]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Option 1: Use Env.yml for resolution only
+  env:
+    uses: ./.github/workflows/Env.yml
+    secrets: inherit
+
+  build:
+    needs: env
+    runs-on: ubuntu-latest
+    environment: ${{ needs.env.outputs.environment }}
+    steps:
+      - run: echo "Building for ${{ needs.env.outputs.environment }}"
+
+  # Option 2: Use Env.yml with command execution
+  test-with-env:
+    uses: ./.github/workflows/Env.yml
+    with:
+      command: ./gradlew test
+    secrets: inherit
 ```
 
 ---
@@ -191,6 +266,7 @@ SPRING_DATA_MONGODB_URI=<mongodb-atlas-uri>
 
 ### GitHub Repository Level
 - [ ] Add `RENDER_API_KEY` to repository secrets
+- [ ] Add `CODECOV_TOKEN` to repository secrets
 - [ ] Add `RENDER_SERVICE_ID_DEV` to repository variables
 - [ ] Add `RENDER_SERVICE_ID_PROD` to repository variables
 
@@ -199,7 +275,10 @@ SPRING_DATA_MONGODB_URI=<mongodb-atlas-uri>
 - [ ] Add `OPENAI_API_KEY` secret
 - [ ] Add `JWT_SECRET` secret (unique per environment!)
 - [ ] Add `RENDER_DOMAIN` variable
+- [ ] Add `RENDER_SERVICE_ID` variable
 - [ ] Add `APP_ENVIRONMENT` variable
+- [ ] Add `APP_NAME` variable
+- [ ] Add `LOG_LEVEL_APP` variable
 - [ ] Configure branch protection for `prod`
 
 ### Render (2 services)
@@ -213,9 +292,9 @@ SPRING_DATA_MONGODB_URI=<mongodb-atlas-uri>
 
 ## Troubleshooting
 
-### "RENDER_SERVICE_ID_DEV/PROD not set"
-- Add as **repository variable** (not environment variable)
-- Go to: Settings → Secrets and variables → Actions → Variables
+### "RENDER_SERVICE_ID not set"
+- Add as **environment variable** in the GitHub Environment
+- Each environment needs its own `RENDER_SERVICE_ID`
 
 ### "RENDER_API_KEY not set"
 - Add as **repository secret**
@@ -226,6 +305,12 @@ SPRING_DATA_MONGODB_URI=<mongodb-atlas-uri>
 - Cold start takes ~30 seconds
 - Verify `/actuator/health` endpoint exists
 
-### Wrong service deployed
-- Check the environment-to-service mapping in Deploy.yml
-- Verify branch triggers in workflow
+### Workflow not triggering
+- Check the `paths` filter in the workflow
+- Ensure branch names match (master/develop/staging)
+- For chain triggers, verify the previous workflow succeeded
+
+### Environment not resolved correctly
+- Check the branch name pattern in the resolve step
+- PRs use `GITHUB_HEAD_REF`, pushes use `GITHUB_REF_NAME`
+- For `workflow_run`, use `github.event.workflow_run.head_branch`

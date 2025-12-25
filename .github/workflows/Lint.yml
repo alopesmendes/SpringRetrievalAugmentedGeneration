@@ -2,12 +2,15 @@
 # Lint Workflow - Code Style & Static Analysis
 # =============================================================================
 # Runs the Gradle lint task (ktlint + detekt)
-# Triggers: PR to master/develop/staging, manual dispatch
+# Triggers:
+#   - PR to master/develop/staging (Starts the chain for PRs)
+#   - Push to master/develop/staging (Starts the chain for Merges)
 # =============================================================================
 
 name: Lint
 
 on:
+  # Trigger on PRs (Feature Branches)
   pull_request:
     branches: [master, develop, staging]
     paths:
@@ -15,6 +18,20 @@ on:
       - '**.kts'
       - 'config/detekt/**'
       - '.editorconfig'
+      - '**.yml'
+      - '**.yaml'
+
+  # Trigger on Merge (Push to main branches)
+  push:
+    branches: [master, develop, staging]
+    paths:
+      - '**.kt'
+      - '**.kts'
+      - 'config/detekt/**'
+      - '.editorconfig'
+      - '**.yml'
+      - '**.yaml'
+
   workflow_dispatch:
   workflow_call:
 

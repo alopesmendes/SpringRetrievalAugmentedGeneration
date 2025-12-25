@@ -11,8 +11,24 @@ name: Security
 on:
   push:
     branches: [master, develop, staging]
+    paths:
+      - '**.kt'
+      - '**.kts'
+      - 'gradle/**'
+      - '**/build.gradle.kts'
+      - '**.yml'
+      - '**.yaml'
+
   pull_request:
     branches: [master, develop, staging]
+    paths:
+      - '**.kt'
+      - '**.kts'
+      - 'gradle/**'
+      - '**/build.gradle.kts'
+      - '**.yml'
+      - '**.yaml'
+
   schedule:
     - cron: '30 2 * * *' # Run nightly at 2:30 AM
   workflow_dispatch:
@@ -109,6 +125,7 @@ jobs:
         if: always() && steps.validate-sarif.outputs.sarif_valid == 'true'
         with:
           sarif_file: build/security-reports/global-security.sarif
+          # Category must match what's on the base branch for PR comparison
           category: trivy-security
           wait-for-processing: true
 

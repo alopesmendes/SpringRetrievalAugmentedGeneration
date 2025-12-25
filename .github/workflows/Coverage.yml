@@ -9,10 +9,29 @@
 name: Coverage
 
 on:
+  pull_request:
+    branches: [ master, develop, staging ]
+    paths:
+      - '**.kt'
+      - '**.kts'
+      - 'gradle/**'
+      - '**/build.gradle.kts'
+      - '**.yml'
+      - '**.yaml'
+
+  push:
+    branches: [ master, develop, staging ]
+    paths:
+      - '**.kt'
+      - '**.kts'
+      - 'gradle/**'
+      - '**/build.gradle.kts'
+      - '**.yml'
+      - '**.yaml'
+
   workflow_run:
     workflows: [Test]
     types: [completed]
-    branches: [master, develop, staging]
   workflow_dispatch:
 
 concurrency:
@@ -35,6 +54,7 @@ jobs:
   # ===========================================================================
   coverage:
     name: 📊 Coverage
+
     runs-on: ubuntu-latest
     # Only run if Test workflow succeeded
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}

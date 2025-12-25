@@ -3,22 +3,51 @@
 # =============================================================================
 # Runs deep static analysis using CodeQL (Security) and Detekt (Code Smells).
 # Results are uploaded to GitHub's Security > Code Scanning tab.
-# Triggers: Push, PR, and Weekly Schedule
+#
+# Security Note:
+#   - pull_request: Runs in unprivileged context (safe for untrusted PR code)
+#   - workflow_run: Only triggers for PUSH events to protected branches
+#     (prevents pwn request attacks from malicious PRs)
+#
+# Triggers: PR, Push to protected branches, Weekly Schedule, Manual
 # =============================================================================
 
 name: Analysis
 
 on:
-  push:
-    branches: [ master, develop, staging ]
   pull_request:
-    branches: [ master, develop, staging ]
+    branches: [master, develop, staging]
+    paths:
+      - '**.kt'
+      - '**.kts'
+      - 'gradle/**'
+      - '**/build.gradle.kts'
+      - '**.yml'
+      - '**.yaml'
+
+  push:
+    branches: [master, develop, staging]
+    paths:
+      - '**.kt'
+      - '**.kts'
+      - 'gradle/**'
+      - '**/build.gradle.kts'
+      - '**.yml'
+      - '**.yaml'
+
+  workflow_run:
+    workflows: [Lint]
+    types: [completed]
+    # Only trigger for pushes to protected branches (not PRs)
+    branches: [master, develop, staging]
+
   schedule:
     - cron: '30 1 * * 0' # Run at 01:30 every Sunday
+
   workflow_dispatch:
 
 concurrency:
-  group: analysis-${{ github.event.pull_request.number || github.ref }}
+  group: analysis-${{ github.event.workflow_run.head_branch || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -33,6 +62,13 @@ jobs:
     name: 🛡️ CodeQL (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    # Security: For workflow_run, only run if:
+    #   1. Lint succeeded
+    #   2. Original event was a PUSH (not a pull_request) - prevents pwn requests
+    if: >
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     permissions:
       security-events: write
       packages: read
@@ -45,12 +81,23 @@ jobs:
         include:
           - language: actions
             build-mode: none
+            # Category must be consistent across all branches for PR comparison
+            category: actions
           - language: java-kotlin
             build-mode: manual
+            # Category must be consistent across all branches for PR comparison
+            category: java-kotlin
+          - language: java
+            build-mode: manual
+            category: java
 
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        with:
+          # For workflow_run from push: use head_sha (trusted)
+          # For other events: use github.sha
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
         if: matrix.language == 'java-kotlin'
@@ -79,7 +126,7 @@ jobs:
       - name: 📊 Perform CodeQL Analysis
         uses: github/codeql-action/analyze@5d4e8d1aca955e8d8589aabd499c5cae939e33c7 # v4
         with:
-          category: "/language:${{ matrix.language }}"
+          category: ${{ matrix.category }}
 
   # ===========================================================================
   # Detekt - Static Analysis & Code Smells (SARIF)
@@ -87,6 +134,13 @@ jobs:
   analyze-detekt:
     name: 🔍 Detekt Code Smells
     runs-on: ubuntu-latest
+    # Security: For workflow_run, only run if:
+    #   1. Lint succeeded
+    #   2. Original event was a PUSH (not a pull_request) - prevents pwn requests
+    if: >
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     permissions:
       security-events: write
       actions: read
@@ -95,6 +149,10 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        with:
+          # For workflow_run from push: use head_sha (trusted)
+          # For other events: use github.sha
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5
