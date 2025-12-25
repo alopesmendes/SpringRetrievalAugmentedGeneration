@@ -2,85 +2,30 @@
 # Build Workflow - Compile the project
 # =============================================================================
 # Runs the Gradle build task (excludes tests)
-# Chain: Lint → Build → Test → Coverage → Deploy
-# Triggers:
-#   - PR to master/develop/staging
-#   - Push to master/develop/staging
-#   - After Lint workflow completes (for chain ordering)
+# This workflow can ONLY be called from CI.yml - no manual trigger.
 # =============================================================================
 
 name: Build
 
 on:
-  pull_request:
-    branches: [master, develop, staging]
-    paths:
-      - '**.kt'
-      - '**.kts'
-      - 'gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
-      - '**/build.gradle.kts'
-      - '**.yml'
-      - '**.yaml'
-
-  push:
-    branches: [master, develop, staging]
-    paths:
-      - '**.kt'
-      - '**.kts'
-      - 'gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
-      - '**/build.gradle.kts'
-      - '**.yml'
-      - '**.yaml'
-
-  workflow_run:
-    workflows: [Lint]
-    types: [completed]
-    branches: [master, develop, staging]
-
-  workflow_dispatch:
   workflow_call:
 
 permissions:
   contents: read
   pull-requests: write
 
-concurrency:
-  group: build-${{ github.event.pull_request.number || github.event.workflow_run.head_branch || github.ref }}
-  cancel-in-progress: true
-
 env:
   JAVA_VERSION: '21'
   JAVA_DISTRIBUTION: 'temurin'
 
 jobs:
-  # ===========================================================================
-  # Resolve Environment using Env.yml
-  # ===========================================================================
-  env:
-    name: 🔍 Environment
-    uses: ./.github/workflows/Env.yml
-    # Skip if triggered by workflow_run and Lint failed
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-    secrets: inherit
-
-  # ===========================================================================
-  # Build Job
-  # ===========================================================================
   build:
     name: 🔨 Build
     runs-on: ubuntu-latest
-    needs: env
-    environment: ${{ needs.env.outputs.environment }}
 
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: ☕ Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5
@@ -95,11 +40,6 @@ jobs:
 
       - name: 🔨 Build all modules
         run: ./gradlew :domain:build :application:build :infrastructure:build -x test
-        env:
-          APP_ENVIRONMENT: ${{ vars.APP_ENVIRONMENT || needs.env.outputs.environment }}
-          APP_NAME: ${{ vars.APP_NAME || 'image-rag' }}
-          LOG_LEVEL_APP: ${{ vars.LOG_LEVEL_APP || 'INFO' }}
-          LOG_LEVEL_ROOT: ${{ vars.LOG_LEVEL_ROOT || 'WARN' }}
 
       - name: 📦 Upload build artifacts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -108,12 +48,11 @@ jobs:
           path: '**/build/libs/'
           retention-days: 7
 
-      - name: 📁 Generate workflow summary
+      - name: 📝 Generate workflow summary
         run: |
           echo "## 🔨 Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Environment | \`${{ needs.env.outputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branch | \`${{ github.event.workflow_run.head_branch || github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${GITHUB_REF_NAME}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${GITHUB_SHA::7}\` |" >> $GITHUB_STEP_SUMMARY

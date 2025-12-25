@@ -4,37 +4,21 @@
 # Performs security analysis on dependencies using Trivy via Gradle tasks.
 # Scans all modules and the global project in a single job.
 # Fails the build if CRITICAL or HIGH vulnerabilities are found.
+#
+# Triggers:
+#   - Nightly schedule (2:30 AM UTC)
+#
+# NO manual trigger - for on-demand scans, use CI.yml.
 # =============================================================================
 
 name: Security
 
 on:
-  push:
-    branches: [master, develop, staging]
-    paths:
-      - '**.kt'
-      - '**.kts'
-      - 'gradle/**'
-      - '**/build.gradle.kts'
-      - '**.yml'
-      - '**.yaml'
-
-  pull_request:
-    branches: [master, develop, staging]
-    paths:
-      - '**.kt'
-      - '**.kts'
-      - 'gradle/**'
-      - '**/build.gradle.kts'
-      - '**.yml'
-      - '**.yaml'
-
   schedule:
     - cron: '30 2 * * *' # Run nightly at 2:30 AM
-  workflow_dispatch:
 
 concurrency:
-  group: security-${{ github.event.pull_request.number || github.ref }}
+  group: security-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -47,9 +31,6 @@ env:
   JAVA_DISTRIBUTION: 'temurin'
 
 jobs:
-  # ===========================================================================
-  # Security Scan - Analyze vulnerabilities in all modules
-  # ===========================================================================
   security:
     name: 🛡️ Security Scan
     runs-on: ubuntu-latest
@@ -80,7 +61,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y trivy
 
-      - name: 🔍 Generate security reports for all modules
+      - name: 📝 Generate security reports for all modules
         run: ./gradlew securityReport
 
       - name: ✅ Verify no critical vulnerabilities
@@ -97,7 +78,6 @@ jobs:
         if: always()
         run: ./gradlew printSecuritySummary || true
 
-      # Validate SARIF file exists and is valid before uploading
       - name: 🔎 Validate SARIF file
         id: validate-sarif
         if: always()
@@ -106,7 +86,6 @@ jobs:
           if [ -f "$SARIF_FILE" ] && [ -s "$SARIF_FILE" ]; then
             echo "sarif_exists=true" >> $GITHUB_OUTPUT
             echo "✅ SARIF file exists and is not empty"
-            # Validate JSON structure
             if jq empty "$SARIF_FILE" 2>/dev/null; then
               echo "sarif_valid=true" >> $GITHUB_OUTPUT
               echo "✅ SARIF file is valid JSON"
@@ -125,7 +104,6 @@ jobs:
         if: always() && steps.validate-sarif.outputs.sarif_valid == 'true'
         with:
           sarif_file: build/security-reports/global-security.sarif
-          # Category must match what's on the base branch for PR comparison
           category: trivy-security
           wait-for-processing: true
 

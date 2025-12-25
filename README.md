@@ -1,7 +1,6 @@
 # SpringRetrievalAugmentedGeneration
 
-[![codecov](https://codecov.io/gh/alopesmendes/SpringRetrievalAugmentedGeneration/branch/master/graph/badge.svg)](https://codecov.io/gh/alopesmendes/SpringRetrievalAugmentedGeneration)
-[![Coverage](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Coverage.yml/badge.svg)](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Coverage.yml)
+[![codecov](https://codecov.io/github/alopesmendes/SpringRetrievalAugmentedGeneration/graph/badge.svg?token=ZOB7G5BEKR)](https://codecov.io/github/alopesmendes/SpringRetrievalAugmentedGeneration)[![Coverage](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Coverage.yml/badge.svg)](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Coverage.yml)
 [![Test](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Test.yml/badge.svg)](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Test.yml)
 [![Build](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Build.yml/badge.svg)](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Build.yml)
 [![Lint](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Lint.yml/badge.svg)](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Lint.yml)
@@ -33,7 +32,7 @@ This project follows **Hexagonal Architecture** (Ports & Adapters) with three di
 
 | Metric          | Threshold | Status                                                                                                                                                                                                            |
 |-----------------|-----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Line Coverage   | 80%       | [![codecov](https://codecov.io/gh/alopesmendes/SpringRetrievalAugmentedGeneration/branch/master/graph/badge.svg)](https://codecov.io/gh/alopesmendes/SpringRetrievalAugmentedGeneration)                          |
+| Line Coverage   | 80%       | [![codecov](https://codecov.io/github/alopesmendes/SpringRetrievalAugmentedGeneration/graph/badge.svg?token=ZOB7G5BEKR)](https://codecov.io/github/alopesmendes/SpringRetrievalAugmentedGeneration)                          |
 | Static Analysis | detekt    | [![Lint](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Lint.yml/badge.svg)](https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration/actions/workflows/Lint.yml) |
 | Code Style      | ktlint    | Enforced                                                                                                                                                                                                          |
 
