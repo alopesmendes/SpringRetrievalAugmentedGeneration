@@ -3,35 +3,13 @@
 # =============================================================================
 # Generates coverage reports for all modules using Kover in a single job,
 # enforces 80% minimum global coverage, and uploads to Codecov.
-# Triggers: PR to protected branches, push to protected branches, manual dispatch
+# This workflow can ONLY be called from CI.yml - no manual trigger.
 # =============================================================================
 
 name: Coverage
 
 on:
-  pull_request:
-    branches: [master, develop, staging]
-    paths:
-      - '**.kt'
-      - '**.kts'
-      - 'gradle/**'
-      - '**/build.gradle.kts'
-      - '**.yml'
-
-  push:
-    branches: [master, develop, staging]
-    paths:
-      - '**.kt'
-      - '**.kts'
-      - 'gradle/**'
-      - '**/build.gradle.kts'
-      - '*.yml'
-
-  workflow_dispatch:
-
-concurrency:
-  group: coverage-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  workflow_call:
 
 permissions:
   contents: read
@@ -43,9 +21,6 @@ env:
   JAVA_DISTRIBUTION: 'temurin'
 
 jobs:
-  # ===========================================================================
-  # Coverage - Generate, verify, and report coverage for all modules
-  # ===========================================================================
   coverage:
     name: 📊 Coverage
     runs-on: ubuntu-latest

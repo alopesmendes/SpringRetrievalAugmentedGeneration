@@ -2,63 +2,28 @@
 # Deploy Workflow - Render Deployment
 # =============================================================================
 # Deploys the application to Render (Free Plan: 2 services only)
-# Chain: Lint → Build → Test → Coverage → Deploy
-# Triggers:
-#   - Push to master/develop/staging (NOT PRs - we don't deploy PRs)
-#   - After Coverage workflow completes (for chain ordering)
-#   - Manual dispatch with environment selection
+# This workflow can ONLY be called from CI.yml - no manual trigger.
+#
+# Render Service Mapping:
+#   - development, test → image-rag-dev
+#   - staging, prod     → image-rag-prod
+#
 # =============================================================================
 
 name: Deploy
 
 on:
-  # Direct push triggers (no PRs for deploy)
-  push:
-    branches: [master, staging, develop]
-    paths:
-      - '**.kt'
-      - '**.kts'
-      - 'gradle/**'
-      - '**/build.gradle.kts'
-      - 'Dockerfile'
-      - '**.yml'
-      - '**.yaml'
-
-  # Deploy after coverage verification passes
-  workflow_run:
-    workflows: [Coverage]
-    types: [completed]
-    branches: [master, staging, develop]
-
-  # Manual deployment with environment selection
-  workflow_dispatch:
+  workflow_call:
     inputs:
       environment:
         description: 'Target environment'
         required: true
-        type: choice
-        options:
-          - development
-          - test
-          - staging
-          - prod
+        type: string
       clear_cache:
         description: 'Clear build cache before deploying'
         required: false
         type: boolean
         default: false
-
-  # Allow calling from other workflows
-  workflow_call:
-    inputs:
-      environment:
-        description: 'Target environment (auto-detected if empty)'
-        required: false
-        type: string
-
-concurrency:
-  group: deploy-${{ github.event.inputs.environment || github.event.workflow_run.head_branch || github.ref_name }}
-  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -66,134 +31,110 @@ permissions:
 
 jobs:
   # ===========================================================================
-  # Resolve Environment using Env.yml
+  # Resolve Render Service
   # ===========================================================================
-  env:
-    name: 🔍 Environment
-    uses: ./.github/workflows/Env.yml
-    # Logic:
-    # 1. Always run if manual dispatch or workflow call
-    # 2. If triggered by workflow_run (Coverage):
-    #    - Must be success
-    #    - Must be a PUSH event (Not a PR) to prevent auto-deploying PRs
-    # 3. If triggered by push: run directly
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'workflow_call' ||
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push')
-    with:
-      environment: ${{ inputs.environment || github.event.inputs.environment || '' }}
-    secrets: inherit
-
-  # ===========================================================================
-  # Determine Render Service
-  # ===========================================================================
-  resolve-render:
+  resolve:
     name: 🔍 Resolve Render Service
     runs-on: ubuntu-latest
-    needs: env
 
     outputs:
-      render_service: ${{ steps.determine.outputs.render_service }}
-      service_id_var: ${{ steps.determine.outputs.service_id_var }}
+      environment: ${{ inputs.environment }}
+      render_service: ${{ steps.resolve.outputs.render_service }}
 
     steps:
       - name: 🔍 Map environment to Render service
-        id: determine
+        id: resolve
         run: |
-          SELECTED_ENV="${{ needs.env.outputs.environment }}"
+          SELECTED_ENV="${{ inputs.environment }}"
 
-          # Map GitHub environment to Render service (2 services only)
+          # Map environment to Render service (2 services only)
           case "$SELECTED_ENV" in
             development|test)
               RENDER_SERVICE="dev"
-              SERVICE_ID_VAR="RENDER_SERVICE_ID"
               ;;
             staging|prod)
               RENDER_SERVICE="prod"
-              SERVICE_ID_VAR="RENDER_SERVICE_ID"
               ;;
             *)
               RENDER_SERVICE="dev"
-              SERVICE_ID_VAR="RENDER_SERVICE_ID"
               ;;
           esac
 
           echo "render_service=$RENDER_SERVICE" >> $GITHUB_OUTPUT
-          echo "service_id_var=$SERVICE_ID_VAR" >> $GITHUB_OUTPUT
-
-          echo "✅ GitHub Environment: $SELECTED_ENV"
-          echo "✅ Render Service: image-rag-$RENDER_SERVICE"
+          echo "✅ Environment: $SELECTED_ENV"
+          echo "✅ Render service: image-rag-$RENDER_SERVICE"
 
   # ===========================================================================
   # Deploy to Render
   # ===========================================================================
   deploy:
-    name: 🚀 Deploy to Render (${{ needs.resolve-render.outputs.render_service }})
+    name: 🚀 Deploy to Render (${{ needs.resolve.outputs.render_service }})
     runs-on: ubuntu-latest
-    needs: [env, resolve-render]
+    needs: [resolve]
     environment:
-      name: ${{ needs.env.outputs.environment }}
+      name: ${{ inputs.environment }}
       url: ${{ vars.RENDER_DOMAIN }}
 
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
-        with:
-          # Important for workflow_run to get the correct commit
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: 🔧 Resolve Render Service ID
         id: resolve_service
         run: |
-          # Get the appropriate service ID based on environment
           SERVICE_ID="${{ vars.RENDER_SERVICE_ID }}"
 
           if [[ -z "$SERVICE_ID" ]]; then
-            echo "❌ ${{ needs.resolve-render.outputs.service_id_var }} is not set"
-            echo "Add it as an environment variable in GitHub Settings"
+            echo "❌ RENDER_SERVICE_ID is not set for environment '${{ inputs.environment }}'"
+            echo ""
+            echo "📋 Setup required:"
+            echo "1. Go to Repository → Settings → Environments → ${{ inputs.environment }}"
+            echo "2. Add variable: RENDER_SERVICE_ID = srv-xxx"
+            echo "3. Get the service ID from Render Dashboard URL"
             exit 1
           fi
 
           echo "service_id=$SERVICE_ID" >> $GITHUB_OUTPUT
-          echo "✅ Using Service ID: $SERVICE_ID"
+          echo "✅ Using Service ID: ${SERVICE_ID:0:10}..."
 
       - name: 🔧 Validate Render configuration
         run: |
           if [[ -z "${{ secrets.RENDER_API_KEY }}" ]]; then
             echo "❌ RENDER_API_KEY is not set in repository secrets"
-            echo "Generate an API key at: https://dashboard.render.com/u/settings#api-keys"
+            echo ""
+            echo "📋 Setup required:"
+            echo "1. Go to https://dashboard.render.com/u/settings#api-keys"
+            echo "2. Generate an API key"
+            echo "3. Add to Repository → Settings → Secrets → RENDER_API_KEY"
             exit 1
           fi
           echo "✅ Render configuration validated"
 
       - name: 🚀 Deploy to Render
         id: deploy
-        uses: JorgeLNJunior/render-deploy@5bd1684976d2745e6768f4ef8b8a21067fb0cd6f #v1.4.7
+        uses: JorgeLNJunior/render-deploy@5bd1684976d2745e6768f4ef8b8a21067fb0cd6f # v1.4.7
         with:
           service_id: ${{ steps.resolve_service.outputs.service_id }}
           api_key: ${{ secrets.RENDER_API_KEY }}
-          clear_cache: ${{ github.event.inputs.clear_cache || 'false' }}
+          clear_cache: ${{ inputs.clear_cache }}
           wait_deploy: true
           github_deployment: true
-          deployment_environment: ${{ needs.env.outputs.environment }}
+          deployment_environment: ${{ inputs.environment }}
           github_token: ${{ secrets.PROJECT_TOKEN }}
 
-      - name: 📁 Deployment summary
+      - name: 📝 Deployment summary
         run: |
           echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| GitHub Environment | \`${{ needs.env.outputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Render Service | \`image-rag-${{ needs.resolve-render.outputs.render_service }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branch | \`${{ github.event.workflow_run.head_branch || github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| GitHub Environment | \`${{ inputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Render Service | \`image-rag-${{ needs.resolve.outputs.render_service }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${GITHUB_REF_NAME}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${GITHUB_SHA::7}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Deployed by | @${GITHUB_ACTOR} |" >> $GITHUB_STEP_SUMMARY
           echo "| Timestamp | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cache cleared | \`${{ inputs.clear_cache }}\` |" >> $GITHUB_STEP_SUMMARY
           if [[ -n "${{ vars.RENDER_DOMAIN }}" ]]; then
             echo "| URL | [${{ vars.RENDER_DOMAIN }}](${{ vars.RENDER_DOMAIN }}) |" >> $GITHUB_STEP_SUMMARY
           fi
@@ -204,8 +145,8 @@ jobs:
   verify:
     name: ✅ Verify Deployment
     runs-on: ubuntu-latest
-    needs: [env, resolve-render, deploy]
-    environment: ${{ needs.env.outputs.environment }}
+    needs: [resolve, deploy]
+    environment: ${{ inputs.environment }}
     if: vars.RENDER_DOMAIN != ''
 
     steps:
@@ -214,7 +155,7 @@ jobs:
           echo "Waiting 45 seconds for Render free tier service to wake up..."
           sleep 45
 
-      - name: 🥁 Health check
+      - name: 🏥 Health check
         run: |
           DOMAIN="${{ vars.RENDER_DOMAIN }}"
           HEALTH_ENDPOINT="${DOMAIN}/actuator/health"
@@ -236,7 +177,7 @@ jobs:
           echo "❌ Health check failed after 6 attempts"
           exit 1
 
-      - name: 📁 Verification summary
+      - name: 📝 Verification summary
         if: success()
         run: |
           echo "## ✅ Deployment Verified" >> $GITHUB_STEP_SUMMARY
@@ -249,7 +190,7 @@ jobs:
   notify-failure:
     name: 🚨 Notify Failure
     runs-on: ubuntu-latest
-    needs: [env, resolve-render, deploy]
+    needs: [resolve, deploy]
     if: failure()
 
     steps:
@@ -259,11 +200,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| GitHub Environment | \`${{ needs.env.outputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Render Service | \`image-rag-${{ needs.resolve-render.outputs.render_service }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branch | \`${{ github.event.workflow_run.head_branch || github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| GitHub Environment | \`${{ inputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Render Service | \`image-rag-${{ needs.resolve.outputs.render_service }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${GITHUB_REF_NAME}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Troubleshooting" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "1. Check [Render Dashboard](https://dashboard.render.com) for build logs" >> $GITHUB_STEP_SUMMARY
-          echo "2. Verify \`RENDER_API_KEY\` is valid" >> $GITHUB_STEP_SUMMARY
-          echo "3. Verify \`${{ needs.resolve-render.outputs.service_id_var }}\` is set correctly" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify \`RENDER_API_KEY\` is valid in repository secrets" >> $GITHUB_STEP_SUMMARY
+          echo "3. Verify \`RENDER_SERVICE_ID\` is set in the \`${{ inputs.environment }}\` environment" >> $GITHUB_STEP_SUMMARY
