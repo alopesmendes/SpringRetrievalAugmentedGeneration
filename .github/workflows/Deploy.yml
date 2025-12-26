@@ -170,6 +170,15 @@ jobs:
             exit 0
           fi
 
+          # Remove trailing slash if present
+          DOMAIN="${DOMAIN%/}"
+
+          # Ensure we have https:// prefix
+          if [[ ! "$DOMAIN" =~ ^https?:// ]]; then
+            DOMAIN="https://${DOMAIN}"
+          fi
+
+          # External health endpoint (simple /health endpoint returns 200 OK)
           HEALTH_ENDPOINT="${DOMAIN}/actuator/health"
 
           echo "🔍 Checking health at: ${HEALTH_ENDPOINT}"
@@ -230,7 +239,7 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "1. Check [Render Dashboard](https://dashboard.render.com) for build/deploy logs" >> $GITHUB_STEP_SUMMARY
             echo "2. Verify the application starts correctly locally" >> $GITHUB_STEP_SUMMARY
-            echo "3. Check if the health endpoint \`/actuator/health\` is configured" >> $GITHUB_STEP_SUMMARY
+            echo "3. Check if the health endpoint \`/health\` is returning 200 OK" >> $GITHUB_STEP_SUMMARY
           fi
 
   # ===========================================================================
@@ -258,4 +267,4 @@ jobs:
           echo "1. Check [Render Dashboard](https://dashboard.render.com) for build logs" >> $GITHUB_STEP_SUMMARY
           echo "2. Verify \`RENDER_API_KEY\` is valid in repository secrets" >> $GITHUB_STEP_SUMMARY
           echo "3. Verify \`RENDER_SERVICE_ID\` is set in the \`${{ inputs.environment }}\` environment" >> $GITHUB_STEP_SUMMARY
-          echo "4. Check if the \`/actuator/health\` endpoint is working" >> $GITHUB_STEP_SUMMARY
+          echo "4. Check if the \`/health\` endpoint is returning 200 OK" >> $GITHUB_STEP_SUMMARY

@@ -477,8 +477,8 @@ style:
   CanBeNonNullable:
     active: true
   CascadingCallWrapping:
-    active: true
-    includeElvis: true
+    active: false
+    includeElvis: false
   ClassOrdering:
     active: true
   CollapsibleIfStatements:

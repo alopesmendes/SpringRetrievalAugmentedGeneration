@@ -77,25 +77,45 @@ logging:
     org.springframework: ${LOG_LEVEL_SPRING:INFO}
     org.springframework.web: ${LOG_LEVEL_WEB:INFO}
     org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}
-#    org.springframework.data.mongodb: ${LOG_LEVEL_MONGODB:WARN}
-#    org.mongodb.driver: ${LOG_LEVEL_MONGODB:WARN}
+  #    org.springframework.data.mongodb: ${LOG_LEVEL_MONGODB:WARN}
+  #    org.mongodb.driver: ${LOG_LEVEL_MONGODB:WARN}
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
 
 # =============================================================================
 # Management / Actuator Configuration
 # =============================================================================
-#management:
-#  endpoints:
-#    web:
-#      exposure:
-#       include: ${ACTUATOR_ENDPOINTS:health,info}
-#      base-path: ${ACTUATOR_BASE_PATH:/actuator}
-#  endpoint:
-#    health:
-#      show-details: ${ACTUATOR_HEALTH_DETAILS:when-authorized}
-#    env:
-#      show-values: ${ACTUATOR_ENV_SHOW_VALUES:never}
+management:
+  endpoints:
+    web:
+      exposure:
+        # Expose health and info endpoints (add more as needed: metrics,env,etc.)
+        include: ${ACTUATOR_ENDPOINTS:health,info}
+      base-path: '/actuator'
+  endpoint:
+    health:
+      # Show health details: never, when-authorized, always
+      show-details: ${ACTUATOR_HEALTH_DETAILS:always}
+      # Show components in health check
+      show-components: ${ACTUATOR_HEALTH_COMPONENTS:always}
+      # Enable health endpoint
+      enabled: true
+      probes:
+        # Enable Kubernetes-style probes (liveness, readiness)
+        enabled: true
+    info:
+      enabled: true
+  # Health indicators configuration
+  health:
+    # Disable indicators that might fail without external services configured
+    db:
+      enabled: ${ACTUATOR_HEALTH_DB:false}
+    mongo:
+      enabled: ${ACTUATOR_HEALTH_MONGO:false}
+    diskspace:
+      enabled: true
+    ping:
+      enabled: true
 
 # =============================================================================
 # OpenAPI / Swagger Configuration
