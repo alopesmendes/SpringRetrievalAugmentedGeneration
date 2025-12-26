@@ -8,6 +8,10 @@
 #   - development, test → image-rag-dev
 #   - staging, prod     → image-rag-prod
 #
+# Note: We don't wait for Render deployment to complete (wait_deploy: false)
+# because free tier cold starts can take 2-3 minutes. The verify job handles
+# health checking with proper retries.
+#
 # =============================================================================
 
 name: Deploy
@@ -110,21 +114,23 @@ jobs:
           fi
           echo "✅ Render configuration validated"
 
-      - name: 🚀 Deploy to Render
+      - name: 🚀 Trigger Render Deployment
         id: deploy
         uses: JorgeLNJunior/render-deploy@5bd1684976d2745e6768f4ef8b8a21067fb0cd6f # v1.4.7
         with:
           service_id: ${{ steps.resolve_service.outputs.service_id }}
           api_key: ${{ secrets.RENDER_API_KEY }}
           clear_cache: ${{ inputs.clear_cache }}
-          wait_deploy: true
+          # Don't wait for deployment - free tier can take 2-3 minutes
+          # The verify job will handle health checking with retries
+          wait_deploy: false
           github_deployment: true
           deployment_environment: ${{ inputs.environment }}
           github_token: ${{ secrets.PROJECT_TOKEN }}
 
-      - name: 📝 Deployment summary
+      - name: 📝 Deployment triggered summary
         run: |
-          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Deployment Triggered" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
@@ -135,9 +141,8 @@ jobs:
           echo "| Deployed by | @${GITHUB_ACTOR} |" >> $GITHUB_STEP_SUMMARY
           echo "| Timestamp | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
           echo "| Cache cleared | \`${{ inputs.clear_cache }}\` |" >> $GITHUB_STEP_SUMMARY
-          if [[ -n "${{ vars.RENDER_DOMAIN }}" ]]; then
-            echo "| URL | [${{ vars.RENDER_DOMAIN }}](${{ vars.RENDER_DOMAIN }}) |" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⏳ Waiting for deployment to complete... (see Verify job)" >> $GITHUB_STEP_SUMMARY
 
   # ===========================================================================
   # Post-Deployment Verification
@@ -147,42 +152,86 @@ jobs:
     runs-on: ubuntu-latest
     needs: [resolve, deploy]
     environment: ${{ inputs.environment }}
-    if: vars.RENDER_DOMAIN != ''
 
     steps:
-      - name: ⏳ Wait for service to wake up
+      - name: ⏳ Wait for Render to start building
         run: |
-          echo "Waiting 45 seconds for Render free tier service to wake up..."
-          sleep 45
+          echo "Waiting 30 seconds for Render to start the build..."
+          sleep 30
 
-      - name: 🏥 Health check
+      - name: 🏥 Health check with extended retries
+        id: health_check
         run: |
           DOMAIN="${{ vars.RENDER_DOMAIN }}"
+
+          if [[ -z "$DOMAIN" ]]; then
+            echo "⚠️ RENDER_DOMAIN is not set - skipping health check"
+            echo "status=skipped" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           HEALTH_ENDPOINT="${DOMAIN}/actuator/health"
 
-          echo "Checking health at: ${HEALTH_ENDPOINT}"
+          echo "🔍 Checking health at: ${HEALTH_ENDPOINT}"
+          echo ""
+          echo "Note: Render free tier cold starts can take 2-3 minutes."
+          echo "Will retry for up to 5 minutes..."
+          echo ""
 
-          for i in {1..6}; do
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${HEALTH_ENDPOINT}" || echo "000")
+          # Try for 5 minutes (20 attempts * 15 seconds)
+          MAX_ATTEMPTS=20
+          WAIT_SECONDS=15
+
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            echo "⏳ Attempt $i/$MAX_ATTEMPTS..."
+
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${HEALTH_ENDPOINT}" 2>/dev/null || echo "000")
 
             if [[ "$HTTP_STATUS" == "200" ]]; then
+              echo ""
               echo "✅ Health check passed (HTTP $HTTP_STATUS)"
+              echo "status=success" >> $GITHUB_OUTPUT
               exit 0
+            elif [[ "$HTTP_STATUS" == "000" ]]; then
+              echo "   Connection failed - service may be starting..."
+            else
+              echo "   HTTP $HTTP_STATUS - not ready yet..."
             fi
 
-            echo "⏳ Attempt $i/6: HTTP $HTTP_STATUS - Retrying in 15 seconds..."
-            sleep 15
+            if [[ $i -lt $MAX_ATTEMPTS ]]; then
+              echo "   Retrying in ${WAIT_SECONDS} seconds..."
+              sleep $WAIT_SECONDS
+            fi
           done
 
-          echo "❌ Health check failed after 6 attempts"
+          echo ""
+          echo "❌ Health check failed after $MAX_ATTEMPTS attempts (5 minutes)"
+          echo "status=failed" >> $GITHUB_OUTPUT
           exit 1
 
       - name: 📝 Verification summary
-        if: success()
+        if: always()
         run: |
-          echo "## ✅ Deployment Verified" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Deployment Verification" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Application is healthy at: \`${{ vars.RENDER_DOMAIN }}\`" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ steps.health_check.outputs.status }}" == "success" ]]; then
+            echo "✅ **Application is healthy!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🌐 URL: [${{ vars.RENDER_DOMAIN }}](${{ vars.RENDER_DOMAIN }})" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ steps.health_check.outputs.status }}" == "skipped" ]]; then
+            echo "⚠️ **Health check skipped** - RENDER_DOMAIN not configured" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Health check failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The application did not become healthy within 5 minutes." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Troubleshooting" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "1. Check [Render Dashboard](https://dashboard.render.com) for build/deploy logs" >> $GITHUB_STEP_SUMMARY
+            echo "2. Verify the application starts correctly locally" >> $GITHUB_STEP_SUMMARY
+            echo "3. Check if the health endpoint \`/actuator/health\` is configured" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # ===========================================================================
   # Notify on Failure
@@ -190,7 +239,7 @@ jobs:
   notify-failure:
     name: 🚨 Notify Failure
     runs-on: ubuntu-latest
-    needs: [resolve, deploy]
+    needs: [resolve, deploy, verify]
     if: failure()
 
     steps:
@@ -209,3 +258,4 @@ jobs:
           echo "1. Check [Render Dashboard](https://dashboard.render.com) for build logs" >> $GITHUB_STEP_SUMMARY
           echo "2. Verify \`RENDER_API_KEY\` is valid in repository secrets" >> $GITHUB_STEP_SUMMARY
           echo "3. Verify \`RENDER_SERVICE_ID\` is set in the \`${{ inputs.environment }}\` environment" >> $GITHUB_STEP_SUMMARY
+          echo "4. Check if the \`/actuator/health\` endpoint is working" >> $GITHUB_STEP_SUMMARY

@@ -8,7 +8,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Build
 # -----------------------------------------------------------------------------
-FROM eclipse-temurin:25.0.1_8-jdk-alpine AS builder
+FROM eclipse-temurin:21-jdk-alpine AS builder
 
 WORKDIR /app
 
@@ -44,7 +44,7 @@ RUN java -Djarmode=tools -jar infrastructure/build/libs/*.jar extract --layers -
 # -----------------------------------------------------------------------------
 # Stage 2: Runtime
 # -----------------------------------------------------------------------------
-FROM eclipse-temurin:25.0.1_8-jre-alpine AS runtime
+FROM eclipse-temurin:21-jre-alpine AS runtime
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S appgroup && \

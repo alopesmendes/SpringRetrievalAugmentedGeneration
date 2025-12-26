@@ -5,17 +5,21 @@
 # Only CI.yml can be triggered manually.
 #
 # Flow:
-#   Env ──► Lint ──► Build ──► Test ──► Coverage ──► Deploy (optional)
+#   Env ──► Lint ──► Build ──► Test ──► Coverage ──► Deploy
 #                └──► Analysis (parallel)
+#
+# Deployment Rules:
+#   - PR:                  NEVER deploy (should_deploy=false)
+#   - push to develop:     ALWAYS deploy to development
+#   - push to staging:     ALWAYS deploy to staging
+#   - push to master:      ALWAYS deploy to prod
+#   - manual trigger:      User chooses (deploy input)
 #
 # Environment Rules:
 #   - PR (any target):     default=development, allowed=[development, test]
 #   - push to develop:     default=development, allowed=[development, test]
 #   - push to staging:     default=staging, allowed=[development, test, staging]
 #   - push to master:      default=prod, allowed=[development, test, staging, prod]
-#   - manual (develop):    default=development, allowed=[development, test]
-#   - manual (staging):    default=staging, allowed=[development, test, staging]
-#   - manual (master):     default=prod, allowed=[development, test, staging, prod]
 #
 # =============================================================================
 
@@ -97,6 +101,9 @@ jobs:
       branch: ${{ steps.resolve.outputs.branch }}
       can_deploy: ${{ steps.resolve.outputs.can_deploy }}
       is_pr: ${{ steps.resolve.outputs.is_pr }}
+      should_deploy: ${{ steps.resolve.outputs.should_deploy }}
+      should_skip_tests: ${{ steps.resolve.outputs.should_skip_tests }}
+      should_clear_cache: ${{ steps.resolve.outputs.should_clear_cache }}
 
     steps:
       - name: 🔍 Resolve and validate environment
@@ -104,8 +111,12 @@ jobs:
         run: |
           EVENT_NAME="${{ github.event_name }}"
           INPUT_ENV="${{ inputs.environment }}"
+          INPUT_DEPLOY="${{ inputs.deploy }}"
+          INPUT_SKIP_TESTS="${{ inputs.skip_tests }}"
 
           echo "📌 Event: $EVENT_NAME"
+          echo "📌 Input deploy: '$INPUT_DEPLOY'"
+          echo "📌 Input skip_tests: '$INPUT_SKIP_TESTS'"
 
           # Determine branch and if this is a PR
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
@@ -128,7 +139,7 @@ jobs:
             DEFAULT_ENV="development"
             ALLOWED_ENVS="development test"
             CAN_DEPLOY="false"
-            echo "📌 PR detected - restricting to development/test environments"
+            echo "📌 PR detected - restricting to development/test environments, NO deployment"
           else
             # For push and manual triggers, use branch-based rules
             case "$BRANCH" in
@@ -188,17 +199,65 @@ jobs:
             exit 1
           fi
 
+          # =====================================================================
+          # DEPLOYMENT LOGIC
+          # =====================================================================
+          # - PR: NEVER deploy
+          # - push to develop/staging/master: ALWAYS deploy
+          # - manual (workflow_dispatch): User chooses via inputs.deploy
+          # =====================================================================
+          SHOULD_DEPLOY="false"
+
+          if [[ "$IS_PR" == "true" ]]; then
+            # PRs never deploy
+            SHOULD_DEPLOY="false"
+            echo "📌 PR - deployment disabled"
+          elif [[ "$EVENT_NAME" == "push" && "$CAN_DEPLOY" == "true" ]]; then
+            # Push to protected branches always deploys
+            SHOULD_DEPLOY="true"
+            echo "📌 Push to protected branch - deployment enabled"
+          elif [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            # Manual trigger: user chooses
+            if [[ "$INPUT_DEPLOY" == "true" && "$CAN_DEPLOY" == "true" ]]; then
+              SHOULD_DEPLOY="true"
+              echo "📌 Manual trigger with deploy=true - deployment enabled"
+            else
+              SHOULD_DEPLOY="false"
+              echo "📌 Manual trigger with deploy=false or branch cannot deploy - deployment disabled"
+            fi
+          fi
+
+          # Determine if we should skip tests (only on manual trigger with skip_tests=true)
+          SHOULD_SKIP_TESTS="false"
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$INPUT_SKIP_TESTS" == "true" ]]; then
+            SHOULD_SKIP_TESTS="true"
+          fi
+
+          # Determine if we should clear cache (only on manual trigger with clear_cache=true)
+          SHOULD_CLEAR_CACHE="false"
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && "${{ inputs.clear_cache }}" == "true" ]]; then
+            SHOULD_CLEAR_CACHE="true"
+          fi
+
           echo "environment=$SELECTED_ENV" >> $GITHUB_OUTPUT
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
           echo "can_deploy=$CAN_DEPLOY" >> $GITHUB_OUTPUT
           echo "is_pr=$IS_PR" >> $GITHUB_OUTPUT
+          echo "should_deploy=$SHOULD_DEPLOY" >> $GITHUB_OUTPUT
+          echo "should_skip_tests=$SHOULD_SKIP_TESTS" >> $GITHUB_OUTPUT
+          echo "should_clear_cache=$SHOULD_CLEAR_CACHE" >> $GITHUB_OUTPUT
 
           echo ""
+          echo "=========================================="
           echo "✅ Selected environment: $SELECTED_ENV"
           echo "✅ Branch: $BRANCH"
           echo "✅ Is PR: $IS_PR"
           echo "✅ Can deploy: $CAN_DEPLOY"
+          echo "✅ Should deploy: $SHOULD_DEPLOY"
+          echo "✅ Should skip tests: $SHOULD_SKIP_TESTS"
+          echo "✅ Should clear cache: $SHOULD_CLEAR_CACHE"
           echo "✅ Allowed environments: $ALLOWED_ENVS"
+          echo "=========================================="
 
       - name: 📝 Environment summary
         run: |
@@ -211,9 +270,8 @@ jobs:
           echo "| Branch | \`${{ steps.resolve.outputs.branch }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Environment | \`${{ steps.resolve.outputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Can deploy | \`${{ steps.resolve.outputs.can_deploy }}\` |" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "| Deploy requested | \`${{ inputs.deploy }}\` |" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "| **Should deploy** | \`${{ steps.resolve.outputs.should_deploy }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Should skip tests | \`${{ steps.resolve.outputs.should_skip_tests }}\` |" >> $GITHUB_STEP_SUMMARY
 
   # ===========================================================================
   # Step 2: Lint (Entry point for code quality chain)
@@ -248,7 +306,7 @@ jobs:
   test:
     name: 🧪 Test
     needs: [env, build]
-    if: github.event_name != 'workflow_dispatch' || inputs.skip_tests == false
+    if: needs.env.outputs.should_skip_tests != 'true'
     uses: ./.github/workflows/Test.yml
     secrets: inherit
 
@@ -258,25 +316,19 @@ jobs:
   coverage:
     name: 📊 Coverage
     needs: [env, test]
-    if: github.event_name != 'workflow_dispatch' || inputs.skip_tests == false
+    if: needs.env.outputs.should_skip_tests != 'true'
     uses: ./.github/workflows/Coverage.yml
     secrets: inherit
 
   # ===========================================================================
-  # Step 6: Deploy (Optional, manual trigger only, after all checks pass)
+  # Step 6: Deploy (Based on should_deploy output)
   # ===========================================================================
   deploy:
     name: 🚀 Deploy
     needs: [env, build, test, coverage]
-    # Deploy only if:
-    # 1. Manual trigger with deploy=true
-    # 2. Not a PR (can_deploy='true')
-    # 3. All previous jobs succeeded (or skipped for test/coverage)
     if: |
       always() &&
-      github.event_name == 'workflow_dispatch' &&
-      inputs.deploy == true &&
-      needs.env.outputs.can_deploy == 'true' &&
+      needs.env.outputs.should_deploy == 'true' &&
       needs.env.result == 'success' &&
       needs.build.result == 'success' &&
       (needs.test.result == 'success' || needs.test.result == 'skipped') &&
@@ -284,7 +336,7 @@ jobs:
     uses: ./.github/workflows/Deploy.yml
     with:
       environment: ${{ needs.env.outputs.environment }}
-      clear_cache: ${{ inputs.clear_cache }}
+      clear_cache: ${{ needs.env.outputs.should_clear_cache == 'true' }}
     secrets: inherit
 
   # ===========================================================================
@@ -308,10 +360,8 @@ jobs:
           echo "| Environment | \`${{ needs.env.outputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Branch | \`${{ needs.env.outputs.branch }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${GITHUB_SHA::7}\` |" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "| Deploy requested | \`${{ inputs.deploy }}\` |" >> $GITHUB_STEP_SUMMARY
-            echo "| Tests skipped | \`${{ inputs.skip_tests }}\` |" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "| **Should deploy** | \`${{ needs.env.outputs.should_deploy }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Should skip tests | \`${{ needs.env.outputs.should_skip_tests }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Job Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -325,11 +375,12 @@ jobs:
           echo "| 5 | Coverage | \`${{ needs.coverage.result }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| 6 | Deploy | \`${{ needs.deploy.result }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Environment Rules" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Rules" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Trigger | Default | Allowed Environments | Can Deploy |" >> $GITHUB_STEP_SUMMARY
-          echo "|---------|---------|---------------------|------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| PR (any target) | development | development, test | ❌ |" >> $GITHUB_STEP_SUMMARY
-          echo "| push/manual (develop) | development | development, test | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| push/manual (staging) | staging | development, test, staging | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| push/manual (master) | prod | development, test, staging, prod | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trigger | Should Deploy | Environment |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|---------------|-------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| PR (any target) | ❌ Never | development |" >> $GITHUB_STEP_SUMMARY
+          echo "| push to develop | ✅ Always | development |" >> $GITHUB_STEP_SUMMARY
+          echo "| push to staging | ✅ Always | staging |" >> $GITHUB_STEP_SUMMARY
+          echo "| push to master | ✅ Always | prod |" >> $GITHUB_STEP_SUMMARY
+          echo "| manual trigger | 🔘 User choice | User choice |" >> $GITHUB_STEP_SUMMARY
