@@ -1,0 +1,219 @@
+# =============================================================================
+# Wiki Workflow - Sync Documentation to GitHub Wiki
+# =============================================================================
+# Automatically deploys documentation files from the docs/ folder to the
+# GitHub Wiki repository when changes are pushed to protected branches.
+#
+# Setup Required:
+#   1. Enable Wiki in repository settings (Settings → Features → Wikis)
+#   2. Create at least one wiki page manually (initializes the wiki repo)
+#   3. Add PROJECT_TOKEN secret with repo scope (for wiki push access)
+#
+# Triggers:
+#   - Push to master/develop/staging with docs changes
+#   - Manual dispatch
+# =============================================================================
+
+name: Wiki
+
+on:
+  push:
+    branches: [master, develop, staging]
+    paths:
+      - 'docs/**'
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DOCS_DIR: docs
+
+jobs:
+  # ===========================================================================
+  # Deploy Documentation to GitHub Wiki
+  # ===========================================================================
+  deploy-wiki:
+    name: 📚 Deploy Wiki
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+
+      - name: 📂 Check docs directory exists
+        run: |
+          if [ ! -d "${{ env.DOCS_DIR }}" ]; then
+            echo "❌ docs/ directory not found"
+            exit 1
+          fi
+          echo "✅ Found docs/ directory"
+          ls -la ${{ env.DOCS_DIR }}/
+
+      - name: 📚 Clone wiki repository
+        run: |
+          git clone https://x-access-token:${{ secrets.PROJECT_TOKEN }}@github.com/${{ github.repository }}.wiki.git wiki
+        env:
+          GIT_TERMINAL_PROMPT: 0
+
+      - name: 🧹 Clear existing wiki content
+        run: |
+          cd wiki
+          # Keep .git directory, remove everything else
+          find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} +
+          echo "✅ Cleared existing wiki content"
+
+      - name: 📋 Copy documentation files
+        run: |
+          # Copy all markdown files from docs/ to wiki/
+          cp -r ${{ env.DOCS_DIR }}/*.md wiki/ 2>/dev/null || true
+
+          # List copied files
+          echo "📄 Copied files:"
+          ls -la wiki/*.md 2>/dev/null || echo "No markdown files found"
+
+      - name: 🏠 Generate Home page
+        run: |
+          cat > wiki/Home.md << 'EOF'
+          # Image RAG Documentation
+
+          Welcome to the **Image RAG** project documentation. This wiki contains comprehensive guides for development, architecture, and deployment.
+
+          ## 📚 Documentation Index
+
+          ### Architecture & Design
+          - [[Architecture]] - Hexagonal architecture guide and layer boundaries
+          - [[Example]] - Code examples and implementation patterns
+
+          ### Development Guidelines
+          - [[Rules]] - Naming conventions and coding rules
+          - [[API Contracts]] - REST controller conventions and OpenAPI patterns
+          - [[Test Strategy]] - Testing pyramid and test organization
+
+          ### Git & CI/CD
+          - [[Git Conventions]] - Commit message format and branch naming
+          - [[GitHub Setup]] - Environments, secrets, and Render configuration
+
+          ---
+
+          ## 🔗 Quick Links
+
+          - [Repository](https://github.com/${{ github.repository }})
+          - [Issues](https://github.com/${{ github.repository }}/issues)
+          - [Pull Requests](https://github.com/${{ github.repository }}/pulls)
+          - [Actions](https://github.com/${{ github.repository }}/actions)
+
+          ---
+
+          > 📝 This wiki is automatically generated from the `docs/` folder.
+          > To update documentation, edit files in the repository and push to a protected branch.
+          EOF
+          echo "✅ Generated Home.md"
+
+      - name: 📑 Generate Sidebar
+        run: |
+          cat > wiki/_Sidebar.md << 'EOF'
+          ## 📚 Documentation
+
+          **Architecture**
+          - [[Home]]
+          - [[Architecture]]
+          - [[Example]]
+
+          **Development**
+          - [[Rules]]
+          - [[API Contracts]]
+          - [[Test Strategy]]
+
+          **CI/CD**
+          - [[Git Conventions]]
+          - [[GitHub Setup]]
+
+          ---
+
+          [← Back to Repository](https://github.com/${{ github.repository }})
+          EOF
+          echo "✅ Generated _Sidebar.md"
+
+      - name: 📑 Generate Footer
+        run: |
+          cat > wiki/_Footer.md << 'EOF'
+          ---
+          📖 [Image RAG Documentation](https://github.com/${{ github.repository }}/wiki) |
+          🔧 [Report Issue](https://github.com/${{ github.repository }}/issues/new) |
+          📝 Auto-generated from `docs/` folder
+          EOF
+          echo "✅ Generated _Footer.md"
+
+      - name: 🔄 Rename files for wiki compatibility
+        run: |
+          cd wiki
+
+          # Rename files with underscores to use hyphens (wiki-friendly)
+          # Also handle common naming patterns
+
+          # ARCHITECTURE.md → Architecture.md
+          [ -f "ARCHITECTURE.md" ] && mv "ARCHITECTURE.md" "Architecture.md"
+
+          # API_CONTRACTS.md → API-Contracts.md
+          [ -f "API_CONTRACTS.md" ] && mv "API_CONTRACTS.md" "API-Contracts.md"
+
+          # GIT_CONVENTIONS.md → Git-Conventions.md
+          [ -f "GIT_CONVENTIONS.md" ] && mv "GIT_CONVENTIONS.md" "Git-Conventions.md"
+
+          # GITHUB_SETUP.md → GitHub-Setup.md
+          [ -f "GITHUB_SETUP.md" ] && mv "GITHUB_SETUP.md" "GitHub-Setup.md"
+
+          # TEST_STRATEGY.md → Test-Strategy.md
+          [ -f "TEST_STRATEGY.md" ] && mv "TEST_STRATEGY.md" "Test-Strategy.md"
+
+          # RULES.md → Rules.md
+          [ -f "RULES.md" ] && mv "RULES.md" "Rules.md"
+
+          # Example.md stays as is
+
+          echo "✅ Renamed files for wiki compatibility"
+          echo "📄 Final wiki files:"
+          ls -la *.md
+
+      - name: 🚀 Push to wiki
+        run: |
+          cd wiki
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "ℹ️ No changes to commit"
+          else
+            git commit -m "📚 Sync documentation from docs/ folder
+
+          Automated update from commit: ${{ github.sha }}
+          Branch: ${{ github.ref_name }}
+          Triggered by: ${{ github.actor }}"
+
+            git push origin master
+            echo "✅ Wiki updated successfully"
+          fi
+
+      - name: 📝 Generate summary
+        run: |
+          echo "## 📚 Wiki Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${GITHUB_SHA::7}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📄 Deployed Files" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          ls -1 wiki/*.md 2>/dev/null | sed 's|wiki/||' >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View Wiki](https://github.com/${{ github.repository }}/wiki)" >> $GITHUB_STEP_SUMMARY
