@@ -61,8 +61,12 @@ class SecurityConfig {
                 authorize
                     .requestMatchers(EndpointRequest.to(HealthEndpoint::class.java))
                     .permitAll()
-                    .requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html")
-                    .permitAll()
+                    .requestMatchers(
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/api-docs/**",
+                        "/v3/api-docs/**",
+                    ).permitAll()
                     .requestMatchers("/error")
                     .permitAll()
                     // All other endpoints require authentication

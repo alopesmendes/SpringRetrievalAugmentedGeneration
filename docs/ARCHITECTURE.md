@@ -9,45 +9,86 @@ This project follows **Hexagonal Architecture** (Ports & Adapters) to ensure fra
 ## Hexagonal Architecture Principles
 
 ```
-                    ┌─────────────────────────────────────────┐
-                    │              INFRASTRUCTURE             │
-                    │  ┌─────────────┐    ┌────────────────┐  │
-                    │  │ Spring MVC  │    │   Spring AI    │  │
-                    │  │  (REST API) │    │   (Adapter)    │  │
-                    │  └──────┬──────┘    └───────┬────────┘  │
-                    │         │                   │           │
-                    │         ▼                   ▼           │
-                    │  ┌─────────────────────────────────┐    │
-                    │  │         INPUT PORTS             │    │
-                    │  │        (Use Cases)              │    │
-                    │  └──────────────┬──────────────────┘    │
-                    │                 │                       │
-                    │                 ▼                       │
-                    │  ┌─────────────────────────────────┐    │
-                    │  │           DOMAIN                │    │
-                    │  │  (Entities, Value Objects,      │    │
-                    │  │   Domain Services, Rules)       │    │
-                    │  └──────────────┬──────────────────┘    │
-                    │                 │                       │
-                    │                 ▼                       │
-                    │  ┌─────────────────────────────────┐    │
-                    │  │        OUTPUT PORTS             │    │
-                    │  │    (Repository Interfaces)      │    │
-                    │  └──────────────┬──────────────────┘    │
-                    │                 │                       │
-                    │                 ▼                       │
-                    │  ┌─────────────┐    ┌────────────────┐  │
-                    │  │  MongoDB    │    │ Spring Security│  │
-                    │  │  (Adapter)  │    │   (Adapter)    │  │
-                    │  └─────────────┘    └────────────────┘  │
-                    └─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           INFRASTRUCTURE                                 │
+│  ┌────────────────────┐                      ┌────────────────────────┐  │
+│  │   Primary Adapters │                      │   Secondary Adapters   │  │
+│  │   (REST, CLI, UI)  │                      │   (DB, AI, External)   │  │
+│  └─────────┬──────────┘                      └───────────┬────────────┘  │
+│            │                                             │               │
+│            ▼                                             ▲               │
+│  ┌─────────────────┐                         ┌───────────────────────┐   │
+│  │  Input Ports    │                         │    Output Ports       │   │
+│  │  (Use Cases)    │                         │    (Repositories)     │   │
+│  └─────────┬───────┘                         └───────────▲───────────┘   │
+│            │      ┌─────────────────────┐                │               │
+│            │      │     APPLICATION     │                │               │
+│            └─────►│                     │────────────────┘               │
+│                   │   (Orchestration)   │                                │
+│                   └──────────┬──────────┘                                │
+│                              │                                           │
+│                              ▼                                           │
+│                   ┌─────────────────────┐                                │
+│                   │       DOMAIN        │                                │
+│                   │                     │                                │
+│                   │  Entities, Value    │                                │
+│                   │  Objects, Services  │                                │
+│                   └─────────────────────┘                                │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Flow Summary:**
+- **Inbound**: REST Controller → Input Port → Use Case → Domain → Output Port → Repository
+- **Outbound**: Domain defines interfaces (ports), Infrastructure implements them (adapters)
 
 ---
 
-## Layer Structure
+## Key Design Decisions
 
-### 1. Domain Layer (Core)
+1. **Use Cases as Single Responsibility Units**
+    - Each use case handles one specific business operation
+    - Easier to test and maintain
+
+2. **Mappers at Boundaries**
+    - REST DTOs ↔ Application DTOs ↔ Domain Objects
+    - Persistence Documents ↔ Domain Objects
+    - Prevents leaking infrastructure concerns into domain
+
+3. **Domain Exceptions**
+    - Domain throws domain-specific exceptions
+    - Infrastructure layer handles translation to HTTP status codes
+
+4. **No Anemic Domain**
+    - Business logic lives in domain entities and services
+    - Use cases orchestrate but don't contain business rules
+
+5. **Framework Independence via Custom Annotations**
+    - Domain uses its own annotations (`@DomainEntity`, `@ValueObject`)
+    - Infrastructure configuration maps these to Spring beans without domain awareness
+
+---
+
+## Layer Structure & Dependency Rules
+
+### Dependency Direction
+
+```
+Infrastructure ──────► Application ──────► Domain
+```
+
+| Layer          | Can Depend On       | Cannot Depend On            |
+|----------------|---------------------|-----------------------------|
+| Domain         | Kotlin stdlib only  | Application, Infrastructure |
+| Application    | Domain              | Infrastructure              |
+| Infrastructure | Application, Domain | -                           |
+
+**Enforcement:** Use ArchUnit tests to verify dependency rules. Each layer is a separate Gradle module.
+
+---
+
+### Layer Details (Prose Format)
+
+#### 1. Domain Layer (Core)
 **Location:** `domain/`
 
 The innermost layer containing pure business logic with **zero framework dependencies**.
@@ -64,9 +105,7 @@ The innermost layer containing pure business logic with **zero framework depende
 - NO infrastructure concerns
 - Only depends on Kotlin stdlib and domain-specific libraries
 
----
-
-### 2. Application Layer
+#### 2. Application Layer
 **Location:** `application/`
 
 Orchestrates use cases and defines ports.
@@ -82,33 +121,50 @@ Orchestrates use cases and defines ports.
 - Defines interfaces (ports) that infrastructure implements
 - NO framework dependencies
 
----
-
-### 3. Infrastructure Layer
+#### 3. Infrastructure Layer
 **Location:** `infrastructure/`
 
 Contains all framework-specific implementations (adapters).
 
 **Contains:**
-- **Inbound Adapters** (Driving)
-  - REST Controllers (Spring MVC)
-  - API DTOs and mappers
-  - OpenAPI/Swagger configuration
-
-- **Outbound Adapters** (Driven)
-  - MongoDB Repository implementations
-  - Spring AI adapter for image analysis
-  - Spring Security configuration
-
-- **Configuration**
-  - Spring Boot configuration
-  - Bean definitions
-  - External service configurations
+- **Inbound Adapters** (Driving) - REST Controllers, API DTOs, OpenAPI config
+- **Outbound Adapters** (Driven) - MongoDB repositories, Spring AI adapter, Security
+- **Configuration** - Spring Boot config, Bean definitions
 
 **Rules:**
 - Implements ports defined in Application layer
 - Contains ALL Spring/framework dependencies
 - Maps between infrastructure DTOs and domain objects
+
+**Domain-Spring Bridge:** The `config/` package contains `@Configuration` classes that scan for domain annotations and register them as Spring beans. The domain remains unaware of Spring—configuration acts as the glue.
+
+---
+
+## Port Definitions
+
+### Input Ports (Driving/Primary)
+Define **what** the application can do - the use cases.
+
+```kotlin
+interface IExampleUseCase {
+    operator fun invoke(command: ExampleCommand): Result<ExampleResult>
+}
+```
+
+### Output Ports (Driven/Secondary)
+Define **what** the application needs from external systems.
+
+```kotlin
+interface IExampleRepository {
+    fun save(entity: ExampleEntity): ExampleEntity
+    fun findById(id: ExampleId): ExampleEntity?
+    fun delete(id: ExampleId)
+}
+
+interface IExternalServicePort {
+    fun process(data: ByteArray): ProcessResult
+}
+```
 
 ---
 
@@ -137,93 +193,79 @@ src/
 │           │
 │           └── infrastructure/
 │               ├── adapter/
-│               │   ├── inbound/
+│               │   ├── primary/
 │               │   │   ├── rest/
 │               │   │   │   ├── dto/
 │               │   │   │   └── mapper/
 │               │   │   └── security/
-│               │   └── outbound/
+│               │   └── secondary/
 │               │       ├── persistence/
 │               │       │   ├── document/
 │               │       │   └── mapper/
 │               │       └── ai/
 │               │           └── mapper/
 │               └── config/
-│
-└── test/
-    └── kotlin/
-        └── com/example/projectname/
-            ├── domain/
-            ├── application/
-            └── infrastructure/
-                ├── adapter/
-                │   ├── inbound/
-                │   └── outbound/
-                └── e2e/
 ```
 
 ---
 
-## Dependency Rules
+### Example: User Feature Structure
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    DEPENDENCY DIRECTION                 │
-│                                                         │
-│   Infrastructure ──────► Application ──────► Domain     │
-│                                                         │
-│   (Outer layers depend on inner layers, never reverse)  │
-└─────────────────────────────────────────────────────────┘
+domain/
+├── model/
+│   ├── entity/
+│   │   └── User.kt                    # User entity with business logic
+│   └── valueobject/
+│       ├── UserId.kt                  # Typed identifier
+│       ├── Email.kt                   # Email with validation
+│       └── PasswordHash.kt            # Password hash wrapper
+├── exception/
+│   └── UserException.kt               # UserNotFoundException, etc.
+└── service/
+    └── PasswordService.kt             # Domain password hashing logic
+
+application/
+├── port/
+│   ├── input/
+│   │   ├── ICreateUserUseCase.kt
+│   │   ├── IGetUserUseCase.kt
+│   │   └── IAuthenticateUserUseCase.kt
+│   └── output/
+│       ├── IUserRepository.kt
+│       └── IPasswordHasher.kt
+├── usecase/
+│   ├── CreateUserUseCase.kt
+│   ├── GetUserUseCase.kt
+│   └── AuthenticateUserUseCase.kt
+└── dto/
+    ├── CreateUserCommand.kt
+    ├── AuthenticateCommand.kt
+    └── UserResult.kt
+
+infrastructure/
+├── adapter/
+│   ├── primary/
+│   │   └── rest/
+│   │       ├── UserController.kt
+│   │       ├── dto/
+│   │       │   ├── CreateUserRequest.kt
+│   │       │   └── UserResponse.kt
+│   │       └── mapper/
+│   │           └── UserRestMapper.kt
+│   └── secondary/
+│       ├── persistence/
+│       │   ├── MongoUserRepository.kt  # Implements IUserRepository
+│       │   ├── SpringDataUserRepository.kt
+│       │   ├── document/
+│       │   │   └── UserDocument.kt
+│       │   └── mapper/
+│       │       └── UserPersistenceMapper.kt
+│       └── security/
+│           └── BCryptPasswordHasher.kt # Implements IPasswordHasher
+└── config/
+    └── UserBeanConfig.kt              # Wires use cases as Spring beans
 ```
-
-| Layer          | Can Depend On       | Cannot Depend On            |
-|----------------|---------------------|-----------------------------|
-| Domain         | Kotlin stdlib only  | Application, Infrastructure |
-| Application    | Domain              | Infrastructure              |
-| Infrastructure | Application, Domain | -                           |
-
-**Enforcement:**
-- Use ArchUnit tests to verify dependency rules
-- Domain module should be a separate Gradle module with no Spring dependencies
-
----
-
-## Port Definitions
-
-### Input Ports (Driving/Primary)
-Define **what** the application can do - the use cases.
-
-```kotlin
-interface IExampleUseCase {
-    fun execute(command: ExampleCommand): ExampleResult
-}
-```
-
-### Output Ports (Driven/Secondary)
-Define **what** the application needs from external systems.
-
-```kotlin
-interface IExampleRepository {
-    fun save(entity: ExampleEntity): ExampleEntity
-    fun findById(id: ExampleId): ExampleEntity?
-    fun delete(id: ExampleId)
-}
-
-interface IExternalServicePort {
-    fun process(data: ByteArray): ProcessResult
-}
-```
-
----
-
-## Adapter Mapping
-
-| Component           | Type              | Implements Port         | Description                        |
-|---------------------|-------------------|-------------------------|------------------------------------|
-| REST Controller     | Inbound Adapter   | Uses Input Ports        | REST API endpoints                 |
-| Persistence Adapter | Outbound Adapter  | IRepository             | Database persistence               |
-| AI Adapter          | Outbound Adapter  | IExternalServicePort    | External AI service                |
-| Security Adapter    | Inbound Adapter   | -                       | Authentication/Authorization       |
 
 ---
 
@@ -252,35 +294,3 @@ project/
 └── infrastructure/  # Spring Boot, MongoDB, Spring AI
     └── build.gradle.kts
 ```
-
----
-
-## Key Design Decisions
-
-1. **Use Cases as Single Responsibility Units**
-   - Each use case handles one specific business operation
-   - Easier to test and maintain
-
-2. **Mappers at Boundaries**
-   - REST DTOs ↔ Application DTOs ↔ Domain Objects
-   - Persistence Documents ↔ Domain Objects
-   - Prevents leaking infrastructure concerns into domain
-
-3. **Domain Exceptions**
-   - Domain throws domain-specific exceptions
-   - Infrastructure layer handles translation to HTTP status codes
-
-4. **No Anemic Domain**
-   - Business logic lives in domain entities and services
-   - Use cases orchestrate but don't contain business rules
-
----
-
-## Testing Strategy by Layer
-
-| Layer          | Test Type         | Focus                           |
-|----------------|-------------------|---------------------------------|
-| Domain         | Unit Tests        | Business logic, validation      |
-| Application    | Unit Tests        | Use case orchestration          |
-| Infrastructure | Integration Tests | Adapters, DB, external services |
-| Full Stack     | E2E Tests         | Complete workflows              |

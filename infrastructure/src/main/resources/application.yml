@@ -120,16 +120,16 @@ management:
 # =============================================================================
 # OpenAPI / Swagger Configuration
 # =============================================================================
-#springdoc:
-#  api-docs:
-#    enabled: ${SWAGGER_ENABLED:true}
-#    path: /api-docs
-#  swagger-ui:
-#    enabled: ${SWAGGER_ENABLED:true}
-#    path: /swagger-ui.html
-#    operations-sorter: method
-#    tags-sorter: alpha
-#    try-it-out-enabled: ${SWAGGER_TRY_IT_OUT:false}
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:true}
+    path: /api-docs
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: ${SWAGGER_TRY_IT_OUT:false}
 
 # =============================================================================
 # Application Custom Properties
