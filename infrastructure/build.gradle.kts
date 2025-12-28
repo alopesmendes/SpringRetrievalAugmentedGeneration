@@ -78,7 +78,7 @@ dependencies {
 
     // OpenAPI Documentation (Swagger)
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14")
-    implementation("org.apache.commons:commons-lang3:3.18.0") {
+    implementation("org.apache.commons:commons-lang3:3.20.0") {
         because("CVE-2025-48924 - Uncontrolled Recursion vulnerability")
     }
 
