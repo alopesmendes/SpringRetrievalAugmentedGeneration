@@ -84,7 +84,6 @@ jobs:
 
           ### Architecture & Design
           - [[Architecture]] - Hexagonal architecture guide and layer boundaries
-          - [[Example]] - Code examples and implementation patterns
 
           ### Development Guidelines
           - [[Rules]] - Naming conventions and coding rules
@@ -119,7 +118,6 @@ jobs:
           **Architecture**
           - [[Home]]
           - [[Architecture]]
-          - [[Example]]
 
           **Development**
           - [[Rules]]
@@ -170,8 +168,6 @@ jobs:
 
           # RULES.md → Rules.md
           [ -f "RULES.md" ] && mv "RULES.md" "Rules.md"
-
-          # Example.md stays as is
 
           echo "✅ Renamed files for wiki compatibility"
           echo "📄 Final wiki files:"
