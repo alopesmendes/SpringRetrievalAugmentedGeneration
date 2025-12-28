@@ -184,6 +184,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          # Detect the default branch of the wiki repository
+          DEFAULT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "master")
+          echo "📌 Wiki default branch: $DEFAULT_BRANCH"
+
           git add -A
 
           # Check if there are changes to commit
@@ -196,7 +200,7 @@ jobs:
           Branch: ${{ github.ref_name }}
           Triggered by: ${{ github.actor }}"
 
-            git push origin master
+            git push origin "$DEFAULT_BRANCH"
             echo "✅ Wiki updated successfully"
           fi
 
