@@ -1,6 +1,10 @@
 import io.gitlab.arturbosch.detekt.Detekt
+import io.gitlab.arturbosch.detekt.extensions.DetektExtension
+import io.gitlab.arturbosch.detekt.report.ReportMergeTask
 import kotlinx.kover.gradle.plugin.dsl.AggregationType
 import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jlleitschuh.gradle.ktlint.KtlintExtension
 
 plugins {
     kotlin("jvm") version "2.0.21" apply false
@@ -149,13 +153,14 @@ allprojects {
 // ============================================================================
 // Subprojects Configuration
 // ============================================================================
+val konsistVersion = "0.17.3"
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
     apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "org.jetbrains.kotlinx.kover")
 
-    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    tasks.withType<KotlinCompile> {
         compilerOptions {
             freeCompilerArgs.addAll("-Xjsr305=strict")
         }
@@ -172,7 +177,7 @@ subprojects {
     }
 
     // Ktlint configuration for subprojects
-    configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
+    configure<KtlintExtension> {
         version.set("1.5.0")
         debug.set(false)
         verbose.set(true)
@@ -188,7 +193,7 @@ subprojects {
     }
 
     // Detekt configuration for subprojects
-    configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension> {
+    configure<DetektExtension> {
         buildUponDefaultConfig = true
         allRules = false
         config.setFrom("$rootDir/config/detekt/detekt.yml")
@@ -206,6 +211,10 @@ subprojects {
             sarif.required.set(true)
             md.required.set(true)
         }
+    }
+
+    dependencies {
+        "testImplementation"("com.lemonappdev:konsist:$konsistVersion")
     }
 }
 
@@ -230,7 +239,7 @@ tasks.register("format") {
 // ============================================================================
 // Report Merging (Fix for GitHub Code Scanning)
 // ============================================================================
-tasks.register<io.gitlab.arturbosch.detekt.report.ReportMergeTask>("mergeDetektSarif") {
+tasks.register<ReportMergeTask>("mergeDetektSarif") {
     group = "verification"
     description = "Merges Detekt SARIF reports from all submodules into one file."
 
@@ -499,7 +508,7 @@ tasks.register("printCoverageSummary") {
 // Security Tasks - Trivy vulnerability scanning
 // ============================================================================
 
-val securityReportsDir = layout.buildDirectory.dir("security-reports")
+val securityReportsDir: Provider<Directory> = layout.buildDirectory.dir("security-reports")
 val trivySeverity = "CRITICAL,HIGH"
 val trivyVulnType = "os,library"
 
