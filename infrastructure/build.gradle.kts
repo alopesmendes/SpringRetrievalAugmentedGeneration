@@ -91,10 +91,9 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit5"))
     // SpringMockK: Allows using @MockkBean inside Spring Contexts
-    testImplementation("com.ninja-squad:springmockk:5.0.1")
+    // testImplementation("com.ninja-squad:springmockk:5.0.1")
     testImplementation("org.springframework.security:spring-security-test")
     // ArchUnit for architecture testing
-    testImplementation("com.tngtech.archunit:archunit-junit5:1.4.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // -------------------------------------------------------------------------

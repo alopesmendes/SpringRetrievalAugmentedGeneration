@@ -56,9 +56,9 @@ fun countVulnerabilitiesInSarif(sarifFile: File): Int = try {
 
 // Helper function to create a valid empty SARIF file
 fun createEmptySarif(): String =
-    $$"""
+    """
 {
-  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "${"$"}schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
   "version": "2.1.0",
   "runs": [
     {
