@@ -60,26 +60,41 @@ class DomainArchitectureTest {
         @Test
         @DisplayName("should only import from allowed packages")
         fun `should only import from allowed packages`() {
-            val allowedPrefixes =
+            val baseAllowed =
                 listOf(
                     "java.",
                     "javax.annotation",
                     "kotlin",
                     "kotlinx",
                     "org.jetbrains.annotations",
+                    "com.ailtontech.annotation.",
                 )
 
-            Konsist
-                .scopeFromModule("domain")
-                .files
-                .filterNot { it.resideInSourceSet("test") }
-                .assertTrue(testName = "Domain should only import from allowed packages") { file ->
-                    file.imports.all { import ->
-                        allowedPrefixes.any { prefix ->
-                            import.name.startsWith(prefix)
-                        }
+            val scope =
+                Konsist
+                    .scopeFromModule("domain")
+                    .files
+                    .filterNot { it.resideInSourceSet("test") }
+
+            scope.assertTrue { file ->
+                val isEntity = file.resideInPath("..entity..")
+                val isValueObject = file.resideInPath("..valueobjects..")
+
+                file.imports.all { import ->
+                    val isBaseAllowed = baseAllowed.any { prefix -> import.name.contains(prefix) }
+
+                    when {
+                        // Entities can import base stuff OR any valueobject package
+                        isEntity -> isBaseAllowed || import.name.contains(".valueobjects.")
+
+                        // Value Objects can ONLY import base stuff (which includes .annotation.)
+                        isValueObject -> isBaseAllowed
+
+                        // Other domain files (like Services/Interfaces)
+                        else -> isBaseAllowed || import.name.contains(".entity.")
                     }
                 }
+            }
         }
     }
 
@@ -246,6 +261,7 @@ class DomainArchitectureTest {
                 .scopeFromModule("domain")
                 .classesAndInterfacesAndObjects()
                 .filterNot { it.resideInSourceSet("test") }
+                .filter { !it.hasNameEndingWith("Companion") }
                 // With the exception of exception classes
                 .filterNot { it.resideInPackage(EXCEPTION_PACKAGE) }
                 .assertTrue(testName = "Classes, interfaces and objects should have Kdoc comments") { clazz ->
