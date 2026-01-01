@@ -11,12 +11,6 @@ dependencies {
     // Kotlin standard library
     implementation(kotlin("stdlib"))
 
-    // Testing
-    testImplementation(kotlin("test"))
-    testImplementation(kotlin("test-junit5"))
-    testImplementation("io.mockk:mockk:1.14.7")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-
     // Test domain module as well
     testImplementation(project(":domain"))
 }

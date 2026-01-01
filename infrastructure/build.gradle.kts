@@ -88,13 +88,9 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
         exclude(group = "org.mockito", module = "mockito-core")
     }
-    testImplementation(kotlin("test"))
-    testImplementation(kotlin("test-junit5"))
     // SpringMockK: Allows using @MockkBean inside Spring Contexts
     // testImplementation("com.ninja-squad:springmockk:5.0.1")
     testImplementation("org.springframework.security:spring-security-test")
-    // ArchUnit for architecture testing
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // -------------------------------------------------------------------------
     // Integration Testing

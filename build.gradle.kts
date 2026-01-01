@@ -154,6 +154,7 @@ allprojects {
 // Subprojects Configuration
 // ============================================================================
 val konsistVersion = "0.17.3"
+val jupiterVersion = "6.0.1"
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
@@ -215,6 +216,11 @@ subprojects {
 
     dependencies {
         "testImplementation"("com.lemonappdev:konsist:$konsistVersion")
+        "testImplementation"(kotlin("test"))
+        "testImplementation"(kotlin("test-junit5"))
+        "testImplementation"("io.mockk:mockk:1.14.7")
+        "testImplementation"("org.junit.jupiter:junit-jupiter-params:$jupiterVersion")
+        "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
     }
 }
 
