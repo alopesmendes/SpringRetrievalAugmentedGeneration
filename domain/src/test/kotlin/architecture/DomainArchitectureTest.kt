@@ -79,19 +79,20 @@ class DomainArchitectureTest {
             scope.assertTrue { file ->
                 val isEntity = file.resideInPath("..entity..")
                 val isValueObject = file.resideInPath("..valueobjects..")
+                val isException = file.resideInPath("..exception..")
 
                 file.imports.all { import ->
                     val isBaseAllowed = baseAllowed.any { prefix -> import.name.contains(prefix) }
 
                     when {
-                        // Entities can import base stuff OR any valueobject package
-                        isEntity -> isBaseAllowed || import.name.contains(".valueobjects.")
+                        // Entities and Exception can import base stuff OR any valueobject package
+                        isEntity || isException -> isBaseAllowed || import.name.contains(".valueobjects.")
 
                         // Value Objects can ONLY import base stuff (which includes .annotation.)
                         isValueObject -> isBaseAllowed
 
                         // Other domain files (like Services/Interfaces)
-                        else -> isBaseAllowed || import.name.contains(".entity.")
+                        else -> isBaseAllowed || import.name.contains(".entity.") || import.name.contains(".exception.")
                     }
                 }
             }
