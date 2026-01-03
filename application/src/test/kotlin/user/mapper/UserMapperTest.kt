@@ -2,7 +2,11 @@ package com.ailtontech.user.mapper
 
 import com.ailtontech.user.dto.UserResult
 import com.ailtontech.user.entity.User
+import com.ailtontech.user.exception.InvalidUserDataException
+import com.ailtontech.user.exception.UserNotFoundException
+import com.ailtontech.user.exception.UserUnknownException
 import com.ailtontech.user.mapper.UserMapper.toResult
+import com.ailtontech.user.mapper.UserMapper.toUserException
 import com.ailtontech.user.valueobjects.Age
 import com.ailtontech.user.valueobjects.Email
 import com.ailtontech.user.valueobjects.Name
@@ -12,11 +16,12 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import java.time.Instant
+import kotlin.test.assertTrue
 
 @DisplayName("UserMapperTest")
 class UserMapperTest {
     @Test
-    fun `when mapping from user, then return 'UserResult'`() {
+    fun `when mapping from 'User', then return 'UserResult'`() {
         val date = Instant.now()
         val user =
             User.from(
@@ -47,7 +52,7 @@ class UserMapperTest {
     }
 
     @Test
-    fun `when mapping from user, then return 'UserResult' with capitalized names`() {
+    fun `when mapping from 'User', then return 'UserResult' with capitalized names`() {
         val date = Instant.now()
         val user =
             User.from(
@@ -75,5 +80,29 @@ class UserMapperTest {
                 updatedAt = date,
             ),
         )
+    }
+
+    @Test
+    fun `when mapping from 'UserException', then return same 'UserException'`() {
+        val exception = UserNotFoundException(id = "user_id")
+        val userException = exception.toUserException()
+
+        assertEquals(exception, userException)
+    }
+
+    @Test
+    fun `when mapping from 'IllegalArgumentException', then return 'InvalidUserDataException'`() {
+        val exception = IllegalArgumentException()
+        val userException = exception.toUserException()
+
+        assertTrue(userException is InvalidUserDataException)
+    }
+
+    @Test
+    fun `when mapping from 'Throwable' in general, then return 'UserUnknownException'`() {
+        val exception = Throwable()
+        val userException = exception.toUserException()
+
+        assertTrue(userException is UserUnknownException)
     }
 }

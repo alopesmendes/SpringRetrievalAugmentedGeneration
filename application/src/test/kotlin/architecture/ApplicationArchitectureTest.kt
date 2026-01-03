@@ -161,6 +161,7 @@ class ApplicationArchitectureTest {
             Konsist
                 .scopeFromModule("application")
                 .classes()
+                .filter { !it.resideInSourceSet("test") }
                 .filter { it.resideInPackage(USE_CASE_PACKAGE) }
                 .filter { !it.hasNameEndingWith("Companion") }
                 .assertTrue(testName = "Use case implementations should end with 'UseCase'") { clazz ->
@@ -209,13 +210,22 @@ class ApplicationArchitectureTest {
         }
 
         @Test
-        @DisplayName("should have use case constructor parameters be interfaces (secondary ports)")
-        fun `should have use case constructor parameters be interfaces`() {
+        @DisplayName("should have use case constructor parameters be interfaces (secondary ports) or domain services")
+        fun `should have use case constructor parameters be interfaces (secondary ports) or domain services`() {
+            val domainServices =
+                Konsist
+                    .scopeFromModule("domain")
+                    .classes()
+                    .filter { it.resideInPackage("..services..") }
+                    .filter { !it.hasNameEndingWith("Companion") }
+                    .map { it.name }
+
             val secondaryPortInterfaces =
                 Konsist
                     .scopeFromModule("application")
                     .interfaces()
                     .filter { it.resideInPackage(SECONDARY_PORT_PACKAGE) }
+                    .filter { !it.hasNameEndingWith("Companion") }
                     .map { it.name }
 
             val useCases =
@@ -230,7 +240,7 @@ class ApplicationArchitectureTest {
                 useCases.filter { useCase ->
                     val params = useCase.primaryConstructor?.parameters ?: emptyList()
                     params.any { param ->
-                        param.type.name !in secondaryPortInterfaces
+                        param.type.name !in secondaryPortInterfaces && param.type.name !in domainServices
                     }
                 }
 
