@@ -12,6 +12,9 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
+/**
+ * OpenAPI (Swagger) configuration.
+ */
 @Configuration
 class OpenApiConfig {
     @Value("\${spring.application.name:image-rag}")
@@ -22,37 +25,44 @@ class OpenApiConfig {
 
     @Bean
     fun openAPI(): OpenAPI = OpenAPI()
-        .info(
-            Info()
-                .title("$applicationName API")
-                .description(
-                    "API for Image Retrieval Augmented Generation - Extract and store information from images using AI",
-                ).contact(
-                    Contact()
-                        .name("Ailton Tech")
-                        .url("https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration"),
-                ).license(
-                    License()
-                        .name("MIT License")
-                        .url("https://opensource.org/licenses/MIT"),
-                ),
-        ).servers(
+        .info(apiInfo())
+        .servers(
             listOf(
                 Server()
                     .url("/")
                     .description("Current Environment: $activeProfile"),
             ),
-        ).components(
+        ).addSecurityItem(SecurityRequirement().addList(SECURITY_SCHEME_NAME))
+        .components(
             Components()
                 .addSecuritySchemes(
-                    "bearerAuth",
+                    SECURITY_SCHEME_NAME,
                     SecurityScheme()
+                        .name(SECURITY_SCHEME_NAME)
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
                         .bearerFormat("JWT")
-                        .description("Enter JWT token"),
+                        .description("Enter JWT authentication token"),
                 ),
-        ).addSecurityItem(
-            SecurityRequirement().addList("bearerAuth"),
         )
+
+    private fun apiInfo(): Info = Info()
+        .title("${applicationName.uppercase()} API")
+        .description(
+            "API for Image Retrieval Augmented Generation - Extract and store information from images using AI",
+        ).version("1.0.0")
+        .contact(
+            Contact()
+                .name("Ailton Tech")
+                .email("contact@ailtontech.com")
+                .url("https://github.com/alopesmendes/SpringRetrievalAugmentedGeneration"),
+        ).license(
+            License()
+                .name("MIT License")
+                .url("https://opensource.org/licenses/MIT"),
+        )
+
+    companion object {
+        private const val SECURITY_SCHEME_NAME = "bearerAuth"
+    }
 }

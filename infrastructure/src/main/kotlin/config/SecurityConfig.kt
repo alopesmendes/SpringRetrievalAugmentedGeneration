@@ -8,6 +8,8 @@ import org.springframework.core.annotation.Order
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 
 /**
@@ -31,19 +33,16 @@ class SecurityConfig {
         http
             .securityMatcher(EndpointRequest.toAnyEndpoint())
             .authorizeHttpRequests { authorize ->
-                // Allow health endpoint without authentication (for Render/K8s health checks)
                 authorize
                     .requestMatchers(EndpointRequest.to(HealthEndpoint::class.java))
                     .permitAll()
-                    .requestMatchers(EndpointRequest.to("health", "info"))
+                    .requestMatchers(EndpointRequest.to("info"))
                     .permitAll()
-                    // Require authentication for other actuator endpoints
                     .anyRequest()
                     .authenticated()
             }.httpBasic { }
-            .sessionManagement { session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            }.csrf { csrf -> csrf.disable() }
+            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            .csrf { it.disable() }
 
         return http.build()
     }
@@ -55,28 +54,31 @@ class SecurityConfig {
     @Order(2)
     fun apiSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
-            .securityMatcher(EndpointRequest.toAnyEndpoint())
+            // REMOVED: .securityMatcher(EndpointRequest.toAnyEndpoint())
+            // By not specifying a securityMatcher, this chain acts as the default
             .authorizeHttpRequests { authorize ->
-                // Public endpoints
                 authorize
-                    .requestMatchers(EndpointRequest.to(HealthEndpoint::class.java))
-                    .permitAll()
+                    // 1. Documentation & Errors
                     .requestMatchers(
                         "/swagger-ui.html",
                         "/swagger-ui/**",
                         "/api-docs/**",
                         "/v3/api-docs/**",
+                        "/error",
                     ).permitAll()
-                    .requestMatchers("/error")
+                    // 2. Public User Endpoints
+                    .requestMatchers("/api/v1/users/**")
                     .permitAll()
-                    // All other endpoints require authentication
+                    // 3. Everything else requires Auth
                     .anyRequest()
                     .authenticated()
             }.httpBasic { }
-            .sessionManagement { session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            }.csrf { csrf -> csrf.disable() }
+            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            .csrf { it.disable() }
 
         return http.build()
     }
+
+    @Bean
+    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 }

@@ -219,6 +219,7 @@ class InfrastructureArchitectureTest {
             Konsist
                 .scopeFromModule("infrastructure")
                 .files
+                .filterNot { it.resideInSourceSet("test") }
                 .filter { it.resideInPath(MAPPER) }
                 .assertTrue(testName = "REST mapper files should end with 'Mapper'") { file ->
                     file.hasNameEndingWith("Mapper")

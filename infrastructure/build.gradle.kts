@@ -1,6 +1,6 @@
 plugins {
     kotlin("jvm")
-    kotlin("plugin.spring") version "2.0.21"
+    kotlin("plugin.spring") version "2.3.0"
     id("org.springframework.boot") version "3.5.9"
     id("io.spring.dependency-management") version "1.1.7"
 }
@@ -89,7 +89,7 @@ dependencies {
         exclude(group = "org.mockito", module = "mockito-core")
     }
     // SpringMockK: Allows using @MockkBean inside Spring Contexts
-    // testImplementation("com.ninja-squad:springmockk:5.0.1")
+    testImplementation("com.ninja-squad:springmockk:4.0.2")
     testImplementation("org.springframework.security:spring-security-test")
 
     // -------------------------------------------------------------------------
