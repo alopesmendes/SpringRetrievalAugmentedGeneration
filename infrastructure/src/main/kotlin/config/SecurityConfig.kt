@@ -42,7 +42,9 @@ class SecurityConfig {
                     .authenticated()
             }.httpBasic { }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-            .csrf { it.disable() }
+            .csrf { csrf ->
+                csrf.ignoringRequestMatchers(EndpointRequest.toAnyEndpoint())
+            }
 
         return http.build()
     }
@@ -74,7 +76,16 @@ class SecurityConfig {
                     .authenticated()
             }.httpBasic { }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-            .csrf { it.disable() }
+            .csrf { csrf ->
+                csrf.ignoringRequestMatchers(
+                    "/swagger-ui.html",
+                    "/swagger-ui/**",
+                    "/api-docs/**",
+                    "/v3/api-docs/**",
+                    "/error",
+                    "/api/**",
+                )
+            }
 
         return http.build()
     }
