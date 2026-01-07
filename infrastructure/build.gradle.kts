@@ -89,7 +89,7 @@ dependencies {
         exclude(group = "org.mockito", module = "mockito-core")
     }
     // SpringMockK: Allows using @MockkBean inside Spring Contexts
-    testImplementation("com.ninja-squad:springmockk:4.0.2")
+    testImplementation("com.ninja-squad:springmockk:5.0.1")
     testImplementation("org.springframework.security:spring-security-test")
 
     // -------------------------------------------------------------------------
