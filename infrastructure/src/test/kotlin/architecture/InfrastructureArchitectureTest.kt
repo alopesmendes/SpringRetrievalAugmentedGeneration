@@ -59,6 +59,7 @@ class InfrastructureArchitectureTest {
                 .scopeFromModule("infrastructure")
                 .classes()
                 .asSequence()
+                .filterNot { it.resideInSourceSet("integrationTest") }
                 .filter { it.resideInPackage(REST_PACKAGE) }
                 .filter { !it.resideInPackage(REST_DTO_PACKAGE) }
                 .filter { !it.resideInPackage(REST_MAPPER_PACKAGE) }
@@ -219,6 +220,7 @@ class InfrastructureArchitectureTest {
             Konsist
                 .scopeFromModule("infrastructure")
                 .files
+                .filterNot { it.resideInSourceSet("test") }
                 .filter { it.resideInPath(MAPPER) }
                 .assertTrue(testName = "REST mapper files should end with 'Mapper'") { file ->
                     file.hasNameEndingWith("Mapper")
