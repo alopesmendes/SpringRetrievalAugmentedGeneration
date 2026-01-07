@@ -59,6 +59,7 @@ class InfrastructureArchitectureTest {
                 .scopeFromModule("infrastructure")
                 .classes()
                 .asSequence()
+                .filterNot { it.resideInSourceSet("integrationTest") }
                 .filter { it.resideInPackage(REST_PACKAGE) }
                 .filter { !it.resideInPackage(REST_DTO_PACKAGE) }
                 .filter { !it.resideInPackage(REST_MAPPER_PACKAGE) }
