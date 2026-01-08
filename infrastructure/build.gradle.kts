@@ -66,7 +66,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     // For now ignore mongodb also
-    // implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
+    implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
     // Kotlin
@@ -96,8 +96,11 @@ dependencies {
     // Integration Testing
     // -------------------------------------------------------------------------
     // Testcontainers for MongoDB (uncomment when needed)
-    // "integrationTestImplementation"("org.testcontainers:mongodb:2.0.2")
-    // "integrationTestImplementation"("org.testcontainers:junit-jupiter:2.0.2")
+    testImplementation("org.testcontainers:mongodb:1.21.4")
+    implementation("org.apache.commons:commons-compress:1.26.0") {
+        because("CVE-2024-25710 8.1 Transitive Loop with Unreachable Exit Condition ('Infinite Loop')")
+    }
+    testImplementation("org.testcontainers:junit-jupiter:1.21.4")
 
     // -------------------------------------------------------------------------
     // E2E Testing (Cucumber + JUnit 5)

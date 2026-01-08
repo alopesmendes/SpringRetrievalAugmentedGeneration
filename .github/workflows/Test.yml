@@ -97,11 +97,14 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      - name: 🐳 Set up Docker
+        uses: docker/setup-docker-action@v4
+
       - name: 🔗 Run integration tests
         run: |
           echo "Integration tests task configured but skipped until MongoDB is set up"
           echo "To enable, uncomment the gradle command below:"
-          # ./gradlew integrationTest
+          ./gradlew integrationTest
 
       - name: 📦 Assemble test results
         if: always()
