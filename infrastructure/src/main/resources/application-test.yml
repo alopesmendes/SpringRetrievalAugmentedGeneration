@@ -1,0 +1,20 @@
+# Test Profile Configuration
+# Used by integration tests with @ActiveProfiles("test")
+
+spring:
+  data:
+    mongodb:
+      # URI is dynamically set by Testcontainers via @DynamicPropertySource
+      database: imagerag-test
+
+  # Disable unnecessary features for faster test execution
+  main:
+    banner-mode: off
+
+# Logging - minimal for tests
+logging:
+  level:
+    root: WARN
+    com.ailtontech: INFO
+    org.springframework.data.mongodb: DEBUG
+    org.testcontainers: INFO

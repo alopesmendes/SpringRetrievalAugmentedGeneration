@@ -22,9 +22,10 @@ spring:
   # =============================================================================
   # MongoDB Configuration
   # =============================================================================
-  #data:
-  #  mongodb:
-  #    uri: ${MONGODB_URI:mongodb://localhost:27017/imagerag}
+  data:
+    mongodb:
+      uri: ${MONGODB_CONNECTION_STRING:mongodb://localhost:27017/imagerag}
+      database: image-rag-database
 
   # =============================================================================
   # AI Configuration (Spring AI)
