@@ -10,6 +10,12 @@ name: Coverage
 
 on:
   workflow_call:
+    inputs:
+      environment:
+        description: 'Environment for secrets/variables'
+        required: false
+        type: string
+        default: 'development'
 
 permissions:
   contents: read
@@ -24,6 +30,7 @@ jobs:
   coverage:
     name: 📊 Coverage
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
 
     outputs:
       coverage-passed: ${{ steps.verify.outputs.passed }}

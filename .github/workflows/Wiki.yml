@@ -94,6 +94,9 @@ jobs:
           - [[Git Conventions]] - Commit message format and branch naming
           - [[GitHub Setup]] - Environments, secrets, and Render configuration
 
+          ### Integration Tests Troubleshoot
+          - [[INTEGRATION_TESTS_TROUBLESHOOTING]] - How to launch integrationt tests (mostly mongodb instructions)
+
           ---
 
           ## 🔗 Quick Links
@@ -123,6 +126,7 @@ jobs:
           - [[Rules]]
           - [[API Contracts]]
           - [[Test Strategy]]
+          - [[INTEGRATION_TESTS_TROUBLESHOOTING]]
 
           **CI/CD**
           - [[Git Conventions]]
@@ -168,6 +172,9 @@ jobs:
 
           # RULES.md → Rules.md
           [ -f "RULES.md" ] && mv "RULES.md" "Rules.md"
+
+          # INTEGRATION_TESTS_TROUBLESHOOT.md -> Integration-Tests-Troubleshoot.md
+          [ -f "INTEGRATION_TESTS_TROUBLESHOOT.md" ] && mv "INTEGRATION_TESTS_TROUBLESHOOT.md" "Integration-Tests-Troubleshoot.md"
 
           echo "✅ Renamed files for wiki compatibility"
           echo "📄 Final wiki files:"

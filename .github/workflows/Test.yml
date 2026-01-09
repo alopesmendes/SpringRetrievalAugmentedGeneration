@@ -9,6 +9,12 @@ name: Test
 
 on:
   workflow_call:
+    inputs:
+      environment:
+        description: 'Environment for secrets/variables'
+        required: false
+        type: string
+        default: 'development'
 
 permissions:
   contents: read
@@ -26,6 +32,7 @@ jobs:
   unit-tests:
     name: 🧪 Unit Tests
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
 
     steps:
       - name: 📥 Checkout code
@@ -71,6 +78,8 @@ jobs:
   integration-tests:
     name: 🔗 Integration Tests
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
     services:
       mongodb:
         image: mongo:8
@@ -101,10 +110,10 @@ jobs:
         uses: docker/setup-docker-action@e43656e248c0bd0647d3f5c195d116aacf6fcaf4 # v4
 
       - name: 🔗 Run integration tests
-        run: |
-          echo "Integration tests task configured but skipped until MongoDB is set up"
-          echo "To enable, uncomment the gradle command below:"
-          ./gradlew integrationTest
+        run: ./gradlew integrationTest --continue
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SPRING_DATA_MONGODB_URI: mongodb://localhost:27017/imagerag-test
 
       - name: 📦 Assemble test results
         if: always()
@@ -132,6 +141,7 @@ jobs:
   e2e-tests:
     name: 🌐 E2E Tests
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
 
     steps:
       - name: 📥 Checkout code
@@ -149,7 +159,8 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: 🌐 Run E2E tests (Cucumber)
-        run: ./gradlew e2eTest
+        run: ./gradlew e2eTest --continue
+
 
       - name: 📦 Assemble test results
         if: always()
