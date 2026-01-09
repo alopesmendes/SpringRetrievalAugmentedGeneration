@@ -24,6 +24,7 @@ jobs:
   coverage:
     name: 📊 Coverage
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
 
     outputs:
       coverage-passed: ${{ steps.verify.outputs.passed }}
