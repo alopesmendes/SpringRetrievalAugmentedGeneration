@@ -97,7 +97,7 @@ dependencies {
     // -------------------------------------------------------------------------
     // Testcontainers for MongoDB (uncomment when needed)
     testImplementation("org.testcontainers:mongodb:1.21.4")
-    implementation("org.apache.commons:commons-compress:1.26.0") {
+    implementation("org.apache.commons:commons-compress:1.28.0") {
         because("CVE-2024-25710 8.1 Transitive Loop with Unreachable Exit Condition ('Infinite Loop')")
     }
     testImplementation("org.testcontainers:junit-jupiter:1.21.4")
