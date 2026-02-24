@@ -81,7 +81,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: 🔧 Resolve Render Service ID
         id: resolve_service
@@ -116,7 +116,7 @@ jobs:
 
       - name: 🚀 Trigger Render Deployment
         id: deploy
-        uses: JorgeLNJunior/render-deploy@5bd1684976d2745e6768f4ef8b8a21067fb0cd6f # v1.4.7
+        uses: JorgeLNJunior/render-deploy@32c271db15b8b87b91cec4bb2cc094cc7c0f98a2 # v1.5.0
         with:
           service_id: ${{ steps.resolve_service.outputs.service_id }}
           api_key: ${{ secrets.RENDER_API_KEY }}
