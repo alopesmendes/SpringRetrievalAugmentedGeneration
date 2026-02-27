@@ -69,7 +69,7 @@ jobs:
         run: ./gradlew printCoverageSummary || true
 
       - name: 📊 Upload coverage reports (XML)
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         if: always()
         with:
           name: coverage-xml
@@ -78,7 +78,7 @@ jobs:
           if-no-files-found: warn
 
       - name: 📊 Upload coverage reports (HTML)
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         if: always()
         with:
           name: coverage-html
