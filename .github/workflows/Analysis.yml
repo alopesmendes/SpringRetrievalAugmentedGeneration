@@ -54,7 +54,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: 🔍 Initialize CodeQL
-        uses: github/codeql-action/init@89a39a4e59826350b863aa6b6252a07ad50cf83e # v4
+        uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
         with:
           languages: java-kotlin
           build-mode: manual
@@ -64,7 +64,7 @@ jobs:
         run: ./gradlew assemble --no-daemon
 
       - name: 📊 Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@89a39a4e59826350b863aa6b6252a07ad50cf83e # v4
+        uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
         with:
           category: java-kotlin
 
@@ -81,14 +81,14 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: 🔍 Initialize CodeQL
-        uses: github/codeql-action/init@89a39a4e59826350b863aa6b6252a07ad50cf83e # v4
+        uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
         with:
           languages: actions
           build-mode: none
           queries: security-and-quality
 
       - name: 📊 Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@89a39a4e59826350b863aa6b6252a07ad50cf83e # v4
+        uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
         with:
           category: actions
 
@@ -171,7 +171,7 @@ jobs:
           fi
 
       - name: 📤 Upload Detekt SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@89a39a4e59826350b863aa6b6252a07ad50cf83e # v4
+        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
         if: always() && steps.validate.outputs.valid == 'true'
         with:
           sarif_file: build/reports/detekt/merged.sarif

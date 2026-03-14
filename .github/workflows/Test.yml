@@ -198,14 +198,14 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: 📥 Download all test results
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: '*-test-results'
           path: test-results
           merge-multiple: true
 
       - name: 📝 Publish test results
-        uses: dorny/test-reporter@b082adf0eced0765477756c2a610396589b8c637 # v2
+        uses: dorny/test-reporter@3d76b34a4535afbd0600d347b09a6ee5deb3ed7f # v2
         with:
           name: Test Results
           path: 'test-results/**/*.xml'
