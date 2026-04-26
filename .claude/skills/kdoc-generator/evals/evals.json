@@ -1,0 +1,35 @@
+{
+  "skill_name": "kdoc-generator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/kdoc domain/src/main/kotlin/user/entity/User.kt",
+      "expected_output": "User class with KDoc describing its purpose, invariants, and role as a core entity."
+    },
+    {
+      "id": 2,
+      "prompt": "/kdoc application/src/main/kotlin/user/port/secondary/IUserRepository.kt",
+      "expected_output": "IUserRepository interface with KDoc describing its purpose (Persistence Port) and the contract it defines."
+    },
+    {
+      "id": 3,
+      "prompt": "/kdoc domain/src/main/kotlin/user/exception/UserException.kt",
+      "expected_output": "Sealed class UserException with KDoc describing its role as a typed exception hierarchy for the user module."
+    },
+    {
+      "id": 4,
+      "prompt": "/kdoc application/src/main/kotlin/user/useCases/CreateUserUseCase.kt",
+      "expected_output": "Should NOT add KDoc to this file because it is a use case implementation class (not structural enough)."
+    },
+    {
+      "id": 5,
+      "prompt": "/kdoc infrastructure/src/main/kotlin/user/adapter/rest/UserController.kt",
+      "expected_output": "Should NOT add KDoc to this file because it is an adapter implementation (infrastructure logic)."
+    },
+    {
+      "id": 6,
+      "prompt": "/kdoc application/src/main/kotlin/user/mapper/UserMapper.kt",
+      "expected_output": "Should NOT add KDoc to this file because it is only extension functions (mapping logic)."
+    }
+  ]
+}
