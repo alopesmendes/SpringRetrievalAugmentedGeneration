@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(./gradlew *)",
+      "Bash(ls *)",
+      "Bash(ls)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(cat *)",
+      "Bash(docker ps*)",
+      "Bash(docker inspect*)",
+      "Bash(docker logs*)",
+      "Bash(docker images*)",
+      "Bash(docker-compose ps*)",
+      "Bash(docker-compose up*)",
+      "Bash(docker-compose down*)",
+      "Bash(docker-compose logs*)",
+      "Bash(docker exec*)",
+      "Bash(curl -s *)",
+      "Bash(curl -X GET *)",
+      "Bash(curl --get *)"
+    ],
+    "deny": [
+      "Bash(git *)",
+      "Bash(rm *)",
+      "Bash(mv *)",
+      "Bash(cp *)",
+      "Bash(touch *)",
+      "Bash(mkdir *)",
+      "Bash(chmod *)",
+      "Bash(chown *)",
+      "Read(**/.env)",
+      "Read(**/.env.*)"
+    ]
+  }
+}
