@@ -40,3 +40,6 @@ out/
 .kotlin
 /local.properties
 /.clinerules/
+
+### Claude Code Agent Memory ###
+.claude/agent-memory/*/MEMORY.md
